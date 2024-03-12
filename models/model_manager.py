@@ -24,7 +24,7 @@ def complete_analysis_pipeline(data):
     # Apply each dimensionality reduction method
     reduced_data_methods['PCA'], _ = apply_optimal_pca(data)
     reduced_data_methods['t-SNE'] = apply_tsne(data)
-    reduced_data_methods['UMAP'] = apply_umap(data)
+    #reduced_data_methods['UMAP'] = apply_umap(data)
     
     # Calculate silhouette score for each reduced data and find the best one
     for method, reduced_data in reduced_data_methods.items():

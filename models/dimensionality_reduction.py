@@ -36,14 +36,6 @@ def apply_umap(processed_data, n_components=2, n_neighbors=15, min_dist=0.1):
     return reduced_data
 
 
-""" HOW TO CALL
-# Assuming your_processed_data is your pre-processed dataset
-pca_data, optimal_components = apply_optimal_pca(your_processed_data)
-tsne_data = apply_tsne(your_processed_data)
-umap_data = apply_umap(your_processed_data)"""
-
-
-
 
 
 
