@@ -11,11 +11,11 @@ def apply_optimal_pca(processed_data, variance_threshold=0.95):
     """
     pca = PCA(n_components=variance_threshold)
     reduced_data = pca.fit_transform(processed_data)
-    n_components_optimal = pca.n_components_
+    #n_components_optimal = pca.n_components_
     
-    print(f"Optimal number of components found: {n_components_optimal}, explaining {np.sum(pca.explained_variance_ratio_)*100:.2f}% of variance.")
+    #print(f"Optimal number of components found: {n_components_optimal}, explaining {np.sum(pca.explained_variance_ratio_)*100:.2f}% of variance.")
     
-    return reduced_data, n_components_optimal
+    return reduced_data, variance_threshold
 
 def apply_tsne(processed_data, n_components=2, perplexity=30.0, learning_rate=200.0):
     """

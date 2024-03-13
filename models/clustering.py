@@ -43,7 +43,7 @@ def optimal_dbscan(data):
     eps_optimal = distances[kn.knee]
     print(f"Optimal eps value: {eps_optimal}")
     
-    return apply_dbscan(data, eps=eps_optimal, min_samples=5)
+    return apply_dbscan(data, eps=eps_optimal, min_samples=9)
 
 def apply_dbscan(data, eps=0.5, min_samples=5):
     # Perform DBSCAN clustering with specified eps and min_samples values
