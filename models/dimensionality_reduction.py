@@ -17,16 +17,19 @@ def apply_optimal_pca(processed_data, variance_threshold=0.95):
     
     return reduced_data, variance_threshold
 
-def apply_tsne(processed_data, n_components=2, perplexity=30.0, learning_rate=200.0):
+def apply_tsne(processed_data, n_components=2):
     """
     Applies t-SNE to the data, reducing it to 'n_components' dimensions.
+    Adjusts the perplexity based on the number of samples to ensure it's less than n_samples.
     """
-    tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, random_state=42)
+    n_samples = processed_data.shape[0]
+    perplexity = min(30, max(5, n_samples / 3))  # Adjust perplexity based on the number of samples
+    tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42)
     reduced_data = tsne.fit_transform(processed_data)
     
     return reduced_data
 
-def apply_umap(processed_data, n_components=2, n_neighbors=15, min_dist=0.1):
+def apply_umap(processed_data, n_components=2, n_neighbors=15, min_dist=0.1, random_state=42):
     """
     Applies UMAP to the data, reducing it to 'n_components' dimensions.
     """
