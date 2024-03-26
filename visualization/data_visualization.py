@@ -1,6 +1,18 @@
 import os
 import altair as alt
 import pandas as pd
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+from scipy.stats import zscore
+import warnings
+
+# Suppress FutureWarnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+
 
 def altair_visualize_dimensionality_reduction_and_clustering(reduced_data, labels, method_name, feature_names):
     # Ensure labels are of type string for Altair visualization
@@ -29,16 +41,11 @@ def altair_visualize_dimensionality_reduction_and_clustering(reduced_data, label
 
     return chart
 
-
-import altair as alt
-import pandas as pd
-import numpy as np
-
 # Assuming reduced_data is the output from your dimensionality reduction process
 # and is passed to anomaly_detection_optimized
 # anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
 
-def visualize_anomalies_with_predictions(reduced_data, predictions, filename='anomaly_chart.html'):
+def visualize_anomalies_with_predictions(reduced_data, predictions, filename='anomaly_chart_predictions.html'):
     # Ensure predictions is a flat, 1D array
     if not isinstance(predictions, np.ndarray):
         predictions = np.array(predictions)
@@ -67,3 +74,111 @@ def visualize_anomalies_with_predictions(reduced_data, predictions, filename='an
     ).interactive()
 
     chart_anomaly.save(filename)
+
+
+def plot_distributions_altair(data, columns, plot_type='boxplot', title=None, filename='anomaly_chart.html'):
+    print("plotting columns {}".format(list(columns)))
+
+    if plot_type not in {'boxplot', 'kdeplot'}:
+        print("plot_type= {boxplot, kdeplot} only are supported")
+        return
+    
+    # Ensure that data is a DataFrame
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    
+    charts = []
+    for col in columns:
+        if plot_type == 'boxplot':
+            chart = alt.Chart(data).mark_boxplot().encode(
+                x=col + ':Q'
+            ).properties(
+                title=col
+            )
+        elif plot_type == 'kdeplot':
+            chart = alt.Chart(data).transform_density(
+                density=col,
+                as_=[col, 'density'],
+            ).mark_area().encode(
+                x=col + ':Q',
+                y='density:Q'
+            ).properties(
+                title=col
+            )
+        charts.append(chart)
+    
+    # Combine charts into a single visualization
+    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+4]) for i in range(0, len(charts), 4)])
+    
+    if title:
+        combined = combined.properties(title=title)
+    
+    combined.save(filename)
+    print(f"Plot saved as {filename}")
+
+
+
+def plot_categorical_barcharts(data, categorical_columns, title=None, filename='categorical_plot_with_tooltips.html'):
+    # Ensure that data is a DataFrame
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    
+    # Filter only categorical columns for plotting
+    categorical_data = data[categorical_columns].select_dtypes(include=['object', 'category'])
+
+    charts = []
+    for col in categorical_data.columns:
+        # Create the bar chart with tooltips
+        chart = alt.Chart(data).mark_bar().encode(
+            x=alt.X(f"{col}:N", sort='-y'),  # N indicates a nominal (categorical) field
+            y=alt.Y('count()', title='Count'),  # Count the number of entries for each category
+            tooltip=[col, alt.Tooltip('count()', title='Count')]  # Show the tooltip when hovering
+        ).properties(
+            title=f"Bar Chart of {col}"
+        )
+        charts.append(chart)
+
+    # Combine charts into a single visualization
+    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+3]) for i in range(0, len(charts), 3)])  # Adjust the number per row as needed
+
+    if title:
+        combined = combined.properties(title=title)
+    
+    combined.save(filename)
+    print(f"Bar chart with tooltips saved as {filename}")
+
+def plot_financial_barcharts(data, categorical_columns, financial_cols, title=None, filename='financial_categorical_plot.html'):
+    if not isinstance(data, pd.DataFrame):
+        raise ValueError("Data must be a pandas DataFrame")
+    
+    categorical_data = data[categorical_columns].select_dtypes(include=['object', 'category'])
+
+    charts = []
+    for financial_col in financial_cols:
+        for cat_col in categorical_data.columns:
+            if cat_col == financial_col or cat_col not in data.columns:
+                continue  # Skip if the categorical column is the same as the financial column or does not exist in the DataFrame
+
+            # Properly aggregate the financial data to avoid inserting duplicate columns
+            aggregated_data = data.groupby(cat_col).agg({financial_col: 'sum'}).reset_index()
+
+            # Create the bar chart
+            chart = alt.Chart(aggregated_data).mark_bar().encode(
+                x=alt.X(f'{cat_col}:N', title=cat_col),
+                y=alt.Y(f'{financial_col}:Q', title=f'Sum of {financial_col}'),
+                color=alt.Color(f'{cat_col}:N', legend=alt.Legend(title=cat_col)),
+                tooltip=[alt.Tooltip(f'{cat_col}:N', title=cat_col), alt.Tooltip(f'{financial_col}:Q', title=f'Sum of {financial_col}')]
+            ).properties(
+                title=f'Sum of {financial_col} by {cat_col}'
+            )
+
+            charts.append(chart)
+
+    # Combine charts into a single visualization
+    combined = alt.vconcat(*charts).resolve_scale(x='independent', y='independent')
+
+    if title:
+        combined = combined.properties(title=title)
+
+    combined.save(filename)
+    print(f"Financial bar charts saved as {filename}")
