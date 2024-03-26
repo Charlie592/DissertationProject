@@ -7,13 +7,13 @@ from models.anomaly_detection import anomaly_detection_optimized  # Assume this 
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
-
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
-from visualization.data_visualization import altair_visualize_dimensionality_reduction_and_clustering, visualize_anomalies_with_predictions
+from visualization.data_visualization import altair_visualize_dimensionality_reduction_and_clustering, plot_distributions_altair, visualize_anomalies_with_predictions
 
 
-def complete_analysis_pipeline(data):
+
+def complete_analysis_pipeline(data, normalized_data):
     # Ensure 'data' is a DataFrame
     if not isinstance(data, pd.DataFrame):
         raise ValueError("Data needs to be a pandas DataFrame.")
@@ -23,9 +23,9 @@ def complete_analysis_pipeline(data):
     silhouette_scores = {}
 
     # Apply each dimensionality reduction method
-    reduced_data_methods['PCA'], _ = apply_optimal_pca(data, 2)
-    reduced_data_methods['t-SNE'] = apply_tsne(data)
-    #reduced_data_methods['UMAP'] = apply_umap(data)
+    reduced_data_methods['PCA'], _ = apply_optimal_pca(normalized_data, 2)
+    reduced_data_methods['t-SNE'] = apply_tsne(normalized_data)
+    reduced_data_methods['UMAP'] = apply_umap(normalized_data)
     
     # Calculate silhouette score for each reduced data and find the best one
     for method, reduced_data in reduced_data_methods.items():
@@ -44,13 +44,13 @@ def complete_analysis_pipeline(data):
     labels = choose_and_apply_clustering(best_reduced_data)
     # You can further analyze the clustering result or use it for visualization
 
-    method_name = {best_method}  # or 't-SNE', depending on which method was used
+    method_name = {best_method}  # Adjust based on your actual method names
     feature_names = ['Principal Component 1', 'Principal Component']  # Adjust based on your actual feature names
-    print(reduced_data.shape)
     chart = altair_visualize_dimensionality_reduction_and_clustering(reduced_data, labels, method_name, feature_names)
     chart.save('dimensionality_reduction_clustering_visualization.html')
     anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
     visualize_anomalies_with_predictions(reduced_data, predictions)
+    
     
 
 def choose_and_apply_clustering(data):
