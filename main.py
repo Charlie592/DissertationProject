@@ -12,8 +12,8 @@ def process_file(file_path, save_dir=None, impute_missing_values=False):
     raw_data = load_data(file_path)
     if raw_data is not None:
         processed_data, normalized_data, financial_cols = preprocess_data(raw_data, impute_missing_values)
-        print(processed_data)
-        print(normalized_data)
+        #print(processed_data)
+        #print(normalized_data)
         complete_analysis_pipeline(processed_data, normalized_data)
         plot_distributions_altair(raw_data, raw_data.columns)
         if len(financial_cols) > 0:
