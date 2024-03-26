@@ -6,19 +6,85 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 import numpy as np
 from tpot import TPOTRegressor, TPOTClassifier
 
+
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+
+
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
+import pandas as pd
+import numpy as np
+import re 
+
+
 def preprocess_data(data, handle_missing_values):
     normalized_data = data.copy()
+
     if handle_missing_values == False:
         print("Dropping rows with missing values.")
         num_rows_dropped = len(data) - len(data.dropna())
         data.dropna(inplace=True)
         normalized_data.dropna(inplace=True)
         print(f"Dropped {num_rows_dropped} rows with missing values.")
+
+    financial_cols = detect_financial_columns(data)
+
+    for col in data.columns:
+        if col in financial_cols:
+            # Handle financial data specifically (e.g., normalization, categorization)
+            print(f"Handling financial column: {col}")
+            continue
+    
+        # Initialize encoders 
+        one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+        label_encoder = LabelEncoder()
+
+        for col in normalized_data.columns:
+            if normalized_data[col].dtype == 'object':
+                # Fill NaN values in categorical columns with a placeholder
+                normalized_data[col].fillna('missing', inplace=True)
+
+                # Determine encoding strategy based on the number of unique values
+                unique_values = normalized_data[col].nunique()
+                if unique_values >= 5:
+                    # OneHot encode if unique values are 5 or less
+                    encoded = one_hot_encoder.fit_transform(normalized_data[[col]])
+                    encoded_df = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
+                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_df], axis=1)
+                else:
+                    # Label encode if unique values are more than 5
+                    normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
+                
+                
+
+    else:
+        normalized_data = handle_missing_values_with_tpot(normalized_data)
+        normalized_data = normalize_data(normalized_data)
+        return data, normalized_data, financial_cols
+
+
+"""def preprocess_data(data, handle_missing_values):
+    normalized_data = data.copy()
+
+    if handle_missing_values == False:
+        print("Dropping rows with missing values.")
+        num_rows_dropped = len(data) - len(data.dropna())
+        data.dropna(inplace=True)
+        normalized_data.dropna(inplace=True)
+        print(f"Dropped {num_rows_dropped} rows with missing values.")
+
+    financial_cols = detect_financial_columns(data)
+
+    for col in data.columns:
+        if col in financial_cols:
+            # Handle financial data specifically (e.g., normalization, categorization)
+            print(f"Handling financial column: {col}")
+            continue
+    
     for col in normalized_data.columns:
         if normalized_data[col].dtype == 'object':
             # Attempt to convert column to numeric
             normalized_data[col + '_numeric'] = pd.to_numeric(normalized_data[col], errors='coerce')
-            
             # Check if the conversion did not result in any NaN values (all values were numeric)
             if not normalized_data[col + '_numeric'].isna().any():
                 # Replace original column with its numeric version
@@ -44,12 +110,26 @@ def preprocess_data(data, handle_missing_values):
                 data = pd.concat([data.drop(col, axis=1), encoded_df], axis=1)
             else:
                 # Label encode if unique values are more than 5
-                normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
-    else:
-        normalized_data=handle_missing_values_with_tpot(normalized_data)
-        normalized_data = normalize_data(normalized_data)
-        return data, normalized_data
+                print("Performing label encoding on column:", col)
+                transformed_col = normalized_data[[col]]
+                normalized_data = label_encoder.fit_transform(transformed_col)
 
+                
+
+    else:
+        normalized_data = handle_missing_values_with_tpot(normalized_data)
+        normalized_data = normalize_data(normalized_data)
+        return data, normalized_data, financial_cols
+"""
+
+def detect_financial_columns(data):
+    financial_keywords = ['revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary', 'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi',]
+    financial_cols = []
+    for col in data.columns:
+        # Consider both column name and the presence of currency symbols in the data
+        if any(keyword in col.lower() for keyword in financial_keywords) or data[col].astype(str).str.contains(r'[\$\£\€]', regex=True).any():
+            financial_cols.append(col)
+    return financial_cols
 
 def handle_missing_values_with_tpot(data):
     # Identify columns with missing values
