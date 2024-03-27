@@ -147,38 +147,42 @@ def plot_categorical_barcharts(data, categorical_columns, title=None, filename='
     combined.save(filename)
     print(f"Bar chart with tooltips saved as {filename}")
 
-def plot_financial_barcharts(data, categorical_columns, financial_cols, title=None, filename='financial_categorical_plot.html'):
+def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None):
     if not isinstance(data, pd.DataFrame):
         raise ValueError("Data must be a pandas DataFrame")
     
-    categorical_data = data[categorical_columns].select_dtypes(include=['object', 'category'])
-
-    charts = []
+    # Start with an empty horizontal chart
+    hconcat_charts = alt.HConcatChart(hconcat=[])
+    
     for financial_col in financial_cols:
-        for cat_col in categorical_data.columns:
+        # Initialize an empty list for the individual charts
+        individual_charts = []
+        for cat_col in categorical_cols:
             if cat_col == financial_col or cat_col not in data.columns:
-                continue  # Skip if the categorical column is the same as the financial column or does not exist in the DataFrame
+                continue  # Skip if the same as the financial column or does not exist in the DataFrame
 
-            # Properly aggregate the financial data to avoid inserting duplicate columns
+            # Properly aggregate the financial data
             aggregated_data = data.groupby(cat_col).agg({financial_col: 'sum'}).reset_index()
 
             # Create the bar chart
             chart = alt.Chart(aggregated_data).mark_bar().encode(
                 x=alt.X(f'{cat_col}:N', title=cat_col),
                 y=alt.Y(f'{financial_col}:Q', title=f'Sum of {financial_col}'),
-                color=alt.Color(f'{cat_col}:N', legend=alt.Legend(title=cat_col)),
-                tooltip=[alt.Tooltip(f'{cat_col}:N', title=cat_col), alt.Tooltip(f'{financial_col}:Q', title=f'Sum of {financial_col}')]
+                color=alt.Color(f'{cat_col}:N'),  # Here we remove the legend title
+                tooltip=[alt.Tooltip(f'{cat_col}:N'), alt.Tooltip(f'{financial_col}:Q')]
             ).properties(
                 title=f'Sum of {financial_col} by {cat_col}'
             )
+            individual_charts.append(chart)
 
-            charts.append(chart)
-
-    # Combine charts into a single visualization
-    combined = alt.vconcat(*charts).resolve_scale(x='independent', y='independent')
+        # Combine charts for the current financial column side by side
+        combined_charts_for_col = alt.hconcat(*individual_charts).resolve_scale(color='independent')
+        
+        # Add the combined chart for the current financial column to the overall horizontal concatenation
+        hconcat_charts |= combined_charts_for_col
 
     if title:
-        combined = combined.properties(title=title)
+        # Add title to the whole concatenated chart
+        hconcat_charts = hconcat_charts.properties(title=title)
 
-    combined.save(filename)
-    print(f"Financial bar charts saved as {filename}")
+    return hconcat_charts

@@ -50,6 +50,8 @@ def complete_analysis_pipeline(data, normalized_data):
     chart.save('dimensionality_reduction_clustering_visualization.html')
     anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
     visualize_anomalies_with_predictions(reduced_data, predictions)
+
+    return 
     
     
 

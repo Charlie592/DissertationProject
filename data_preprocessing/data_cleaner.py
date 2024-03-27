@@ -28,6 +28,8 @@ def preprocess_data(data, handle_missing_values):
         print(f"Dropped {num_rows_dropped} rows with missing values.")
 
     financial_cols = detect_financial_columns(data)
+    categorical_cols = data.select_dtypes(include=['object']).columns
+    print("Categorical columns:", categorical_cols)
 
     for col in data.columns:
         if col in financial_cols:
@@ -35,6 +37,7 @@ def preprocess_data(data, handle_missing_values):
             print(f"Handling financial column: {col}")
             continue
     
+   
         # Initialize encoders 
         one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
         label_encoder = LabelEncoder()
@@ -60,7 +63,7 @@ def preprocess_data(data, handle_missing_values):
     else:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
         normalized_data = normalize_data(normalized_data)
-        return data, normalized_data, financial_cols
+        return data, normalized_data, financial_cols, categorical_cols
 
 
 """def preprocess_data(data, handle_missing_values):

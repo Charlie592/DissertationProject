@@ -3,6 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
+from visualization.data_visualization import plot_financial_barcharts
 
 # Initialize session state for processed and normalized data
 if 'processed_data' not in st.session_state:
@@ -20,8 +21,17 @@ if st.button('Process Data'):
     if uploaded_file is not None:
         with st.spinner('Processing... Please wait'):
             # Processing and storing the results in session state
-            st.session_state['processed_data'], st.session_state['normalized_data'], analysis_results, anomaly_distribution_plots, _ = process_file(uploaded_file, impute_missing_values=impute_missing_values)
+            (
+                st.session_state['processed_data'], 
+                st.session_state['normalized_data'], 
+                analysis_results, 
+                anomaly_distribution_plots, 
+                financial_cols,  # This should be stored in the session state if you want to preserve it across reruns
+                categorical_cols
+            ) = process_file(uploaded_file, impute_missing_values=impute_missing_values)
             st.session_state['show_visualizations'] = True
+            st.session_state['financial_cols'] = financial_cols  # Add this line to store financial_cols in the session state
+            st.session_state['categorical_cols'] = categorical_cols  # Presumably, you want to store this too
             st.success('Data processing complete!')
     else:
         st.error('Please upload a dataset to process.')
@@ -34,13 +44,38 @@ if st.session_state['show_visualizations']:
 
     if page == "Analysis Results":
         st.write('Analysis Results')
-        if st.session_state['processed_data'] is not None:
-            st.write('Processed data:')
-            st.dataframe(st.session_state['processed_data'].head(10))
 
-        if st.session_state['normalized_data'] is not None:
-            st.write('Normalized data:')
-            st.dataframe(st.session_state['normalized_data'].head(10))
+        # Initialize the subpage list with default page(s)
+        analysis_subpages = ["General Analysis"]
+
+        # Check if 'financial_cols' is defined and has entries
+        # This uses .get to avoid KeyError if 'financial_cols' is not in session_state
+        if len(st.session_state.get('financial_cols', [])) > 0:
+            analysis_subpages.append("Financial")
+
+        # Define 'analysis_page' before any conditional logic that depends on it
+        # This allows the sidebar to present the radio buttons for subpage selection
+        analysis_page = st.sidebar.radio('Select Analysis Type', analysis_subpages)
+
+        # Check if there is processed data to display
+        if st.session_state['processed_data'] is not None:
+            if analysis_page == "General Analysis":
+                # Display general analysis results
+                st.write('General analysis results:')
+                # Code for displaying general analysis results goes here
+                # For example, you might want to show some metrics or tables
+                # st.write(st.session_state['processed_data'].describe())
+
+            elif analysis_page == "Financial":
+                # Display financial analysis results
+                st.write('Financial analysis results:')
+                # Generate the financial chart using the stored DataFrame and column information
+                # Ensure that 'categorical_cols' and 'financial_cols' have been set correctly
+                chart = plot_financial_barcharts(st.session_state['processed_data'], 
+                                                 st.session_state.get('categorical_cols', []), 
+                                                 st.session_state.get('financial_cols', []))
+                st.altair_chart(chart, use_container_width=True)
+
 
     elif page == 'Explore Data':
         st.write('Explore Data')
@@ -49,10 +84,10 @@ if st.session_state['show_visualizations']:
         plot_options = ["Bar plot", "Scatter plot", "Histogram", "Box plot"]
         selected_plot = st.sidebar.selectbox("Choose a plot type", plot_options, key='selected_plot')
 
-        # Assuming 'processed_data' has the data to plot
+        # 'processed_data' has the data to plot
         data = st.session_state['processed_data']
         
-    # Only create charts if data is available
+        # Only create charts if data is available
         if data is not None and selected_plot:
             column_options = data.columns.tolist()
             
@@ -86,7 +121,7 @@ if st.session_state['show_visualizations']:
                 )
                 st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
-            # Histogram - already correct
+            # Histogram 
             elif selected_plot == "Histogram":
                 column = st.sidebar.selectbox("Select a column for histogram", column_options, key='hist_column')
                 bins = st.sidebar.slider("Number of bins", min_value=1, max_value=100, value=30, key='hist_bins')

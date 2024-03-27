@@ -10,7 +10,7 @@ from visualization.data_visualization import plot_distributions_altair, plot_cat
 def process_file(file, save_dir=None, impute_missing_values=False):
     # Adjusted to handle file-like object directly
     raw_data = load_data(file)
-    processed_data, normalized_data, financial_cols = preprocess_data(raw_data, impute_missing_values)
+    processed_data, normalized_data, financial_cols, categorical_cols = preprocess_data(raw_data, impute_missing_values)
     
     # Perform analysis (assuming this function now returns something, e.g., a summary)
     analysis_results = complete_analysis_pipeline(processed_data, normalized_data)
@@ -18,12 +18,8 @@ def process_file(file, save_dir=None, impute_missing_values=False):
     # Generate plots (assuming these functions return plot objects or similar)
     anomaly_distribution_plots = plot_distributions_altair(raw_data, raw_data.columns)
     
-    # Financial barcharts are optional, so check if there are any financial columns
-    if len(financial_cols) > 0:
-        financial_plots = plot_financial_barcharts(raw_data, raw_data.columns, financial_cols)
-    
     # Return processed data and any results or plots for Streamlit to display
-    return processed_data, normalized_data, analysis_results, anomaly_distribution_plots, financial_plots
+    return processed_data, normalized_data, analysis_results, anomaly_distribution_plots, financial_cols, categorical_cols
 
 def process_visualizations():
     None
