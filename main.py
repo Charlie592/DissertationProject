@@ -18,7 +18,7 @@ def process_file(file, save_dir=None, impute_missing_values=False):
     # Generate plots (assuming these functions return plot objects or similar)
     anomaly_distribution_plots = plot_distributions_altair(raw_data, raw_data.columns)
     
-    financial_plots = None
+    # Financial barcharts are optional, so check if there are any financial columns
     if len(financial_cols) > 0:
         financial_plots = plot_financial_barcharts(raw_data, raw_data.columns, financial_cols)
     

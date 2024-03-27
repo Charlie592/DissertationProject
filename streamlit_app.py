@@ -2,12 +2,11 @@ import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
+import altair as alt
 
 # Initialize session state for processed and normalized data
 if 'processed_data' not in st.session_state:
     st.session_state['processed_data'] = None
-if 'normalized_data' not in st.session_state:
-    st.session_state['normalized_data'] = None
 if 'show_visualizations' not in st.session_state:
     st.session_state['show_visualizations'] = False
 
@@ -53,38 +52,52 @@ if st.session_state['show_visualizations']:
         # Assuming 'processed_data' has the data to plot
         data = st.session_state['processed_data']
         
-        if selected_plot == "Bar plot":
-            x_axis = st.sidebar.selectbox("Select x-axis", data.columns, key='x_axis_bar')
-            y_axis = st.sidebar.selectbox("Select y-axis", data.columns, key='y_axis_bar')
-            st.write("Bar plot:")
-            fig, ax = plt.subplots()
-            sns.barplot(x=data[x_axis], y=data[y_axis], ax=ax)
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=46, ha="right")  
-            st.pyplot(fig)
+    # Only create charts if data is available
+        if data is not None and selected_plot:
+            column_options = data.columns.tolist()
+            
+            # Bar plot
+            if selected_plot == "Bar plot":
+                x_axis = st.sidebar.selectbox("Select category axis", column_options, key='x_axis')
+                y_axis = st.sidebar.selectbox("Select value axis", column_options, key='y_axis')
+                chart = alt.Chart(data).mark_bar().encode(
+                    x=x_axis,
+                    y=y_axis
+                )
+                st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
-        elif selected_plot == "Scatter plot":
-            x_axis = st.sidebar.selectbox("Select x-axis", data.columns, key='x_axis_scatter')
-            y_axis = st.sidebar.selectbox("Select y-axis", data.columns, key='y_axis_scatter')
-            st.write("Scatter plot:")
-            fig, ax = plt.subplots()
-            sns.scatterplot(x=data[x_axis], y=data[y_axis], ax=ax)
-            st.pyplot(fig)
+            # Scatter plot
+            elif selected_plot == "Scatter plot":
+                x_axis = st.sidebar.selectbox("Select x-axis", column_options, key='x_axis_scatter')
+                y_axis = st.sidebar.selectbox("Select y-axis", column_options, key='y_axis_scatter')
+                chart = alt.Chart(data).mark_point().encode(
+                    x=x_axis,
+                    y=y_axis
+                )
+                st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
-        elif selected_plot == "Histogram":
-            column = st.sidebar.selectbox("Select a column", data.columns, key='hist_column')
-            bins = st.sidebar.slider("Number of bins", 5, 100, 20, key='hist_bins')
-            st.write("Histogram:")
-            fig, ax = plt.subplots()
-            sns.histplot(data[column], bins=bins, ax=ax)
-            st.pyplot(fig)
+            # Box plot
+            elif selected_plot == "Box plot":
+                x_axis = st.sidebar.selectbox("Select category axis", column_options, key='x_axis_box')
+                y_axis = st.sidebar.selectbox("Select value axis", column_options, key='y_axis_box')
+                chart = alt.Chart(data).mark_boxplot().encode(
+                    x=x_axis,
+                    y=y_axis
+                )
+                st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
-        elif selected_plot == "Box plot":
-            column = st.sidebar.selectbox("Select a column", data.columns, key='box_column')
-            st.write("Box plot:")
-            fig, ax = plt.subplots()
-            sns.boxplot(x=data[column], ax=ax)
-            st.pyplot(fig)
+            # Histogram - already correct
+            elif selected_plot == "Histogram":
+                column = st.sidebar.selectbox("Select a column for histogram", column_options, key='hist_column')
+                bins = st.sidebar.slider("Number of bins", min_value=1, max_value=100, value=30, key='hist_bins')
+                chart = alt.Chart(data).mark_bar().encode(
+                    alt.X(column, bin=alt.Bin(maxbins=bins)),
+                    y='count()'
+                )
+                st.altair_chart(chart, use_container_width=True)
+
 
     elif page == 'Predictions':
         st.write('Predictions')
         # Display prediction-related widgets or visuals
+
