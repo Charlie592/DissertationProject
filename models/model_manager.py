@@ -10,6 +10,11 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
 from visualization.data_visualization import altair_visualize_dimensionality_reduction_and_clustering, plot_distributions_altair, visualize_anomalies_with_predictions
+import matplotlib
+matplotlib.use('Agg')  # Use the Anti-Grain Geometry non-GUI backend suited for scripts and web deployment
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 
 
@@ -43,17 +48,49 @@ def complete_analysis_pipeline(data, normalized_data):
     best_reduced_data = reduced_data_methods[best_method]
     labels = choose_and_apply_clustering(best_reduced_data)
     # You can further analyze the clustering result or use it for visualization
-
     method_name = {best_method}  # Adjust based on your actual method names
     feature_names = ['Principal Component 1', 'Principal Component']  # Adjust based on your actual feature names
-    chart = altair_visualize_dimensionality_reduction_and_clustering(reduced_data, labels, method_name, feature_names)
-    chart.save('dimensionality_reduction_clustering_visualization.html')
-    anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
-    visualize_anomalies_with_predictions(reduced_data, predictions)
+    print(f"Labels: {labels}")
+    
+    return labels
+    
+import seaborn as sns
 
-    return 
-    
-    
+import altair as alt
+import pandas as pd
+
+import seaborn as sns
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def visualize_feature_relationships(data, labels):
+    figures = []  # A list to store the matplotlib figure objects
+    data_with_clusters = data.copy()  # Create a copy of the data
+    data_with_clusters['Cluster'] = labels  # Add the Cluster column to the copied data
+
+    for cluster in data_with_clusters['Cluster'].unique():
+        # Select data for the current cluster and drop the 'Cluster' column
+        cluster_data = data_with_clusters[data_with_clusters['Cluster'] == cluster].drop('Cluster', axis=1)
+        
+        # Pairplot for a subset of features
+        plt.figure(figsize=(10, 8))
+        pairplot_fig = sns.pairplot(cluster_data)
+        plt.title(f"Feature Relationships in Cluster {cluster}")
+        figures.append(pairplot_fig.fig)  # Store the PairGrid's figure object
+        plt.close(pairplot_fig.fig)  # Close the figure window
+
+        # Correlation heatmap
+        heatmap_fig, ax = plt.subplots(figsize=(10, 8))  # Create a new figure for the heatmap
+        sns.heatmap(cluster_data.corr(), annot=True, fmt=".2f", ax=ax)
+        plt.title(f"Feature Correlations in Cluster {cluster}")
+        figures.append(heatmap_fig)  # Store the figure object
+        plt.close(heatmap_fig)  # Close the figure window
+
+    return figures  # Return the list of figure objects
+
+
+
 
 def choose_and_apply_clustering(data):
     # Example simplistic criteria: Dataset size
@@ -67,7 +104,11 @@ def choose_and_apply_clustering(data):
     return labels
 
 
-
+    """    chart = altair_visualize_dimensionality_reduction_and_clustering(reduced_data, labels, method_name, feature_names)
+        chart.save('dimensionality_reduction_clustering_visualization.html')
+        anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
+        visualize_anomalies_with_predictions(reduced_data, predictions)
+    """
 
 """
     # Now you can use the feature names directly for visualization

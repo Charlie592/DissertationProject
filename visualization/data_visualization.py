@@ -76,76 +76,80 @@ def visualize_anomalies_with_predictions(reduced_data, predictions, filename='an
     chart_anomaly.save(filename)
 
 
-def plot_distributions_altair(data, columns, plot_type='boxplot', title=None, filename='anomaly_chart.html'):
-    print("plotting columns {}".format(list(columns)))
-
+def plot_distributions_altair(data, plot_type='boxplot', title=None):
+    # Select only numeric columns for plotting
+    numeric_columns = data.select_dtypes(include=[np.number]).columns
     if plot_type not in {'boxplot', 'kdeplot'}:
         print("plot_type= {boxplot, kdeplot} only are supported")
         return
-    
-    # Ensure that data is a DataFrame
-    if not isinstance(data, pd.DataFrame):
-        data = pd.DataFrame(data)
-    
+
     charts = []
-    for col in columns:
+    for col in numeric_columns:
         if plot_type == 'boxplot':
             chart = alt.Chart(data).mark_boxplot().encode(
-                x=col + ':Q'
-            ).properties(
-                title=col
+                x=alt.X(col + ':Q', title=col)  # Including title for each boxplot
             )
         elif plot_type == 'kdeplot':
             chart = alt.Chart(data).transform_density(
                 density=col,
-                as_=[col, 'density'],
+                as_=[col, 'density']
             ).mark_area().encode(
-                x=col + ':Q',
+                x=alt.X(col + ':Q', title=col),  # Including title for the density plot
                 y='density:Q'
-            ).properties(
-                title=col
             )
         charts.append(chart)
     
-    # Combine charts into a single visualization
-    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+4]) for i in range(0, len(charts), 4)])
-    
+    # Combine charts into a single visualization, with a set number per row
+    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+4]) for i in range(0, len(charts), 3)])
+
     if title:
         combined = combined.properties(title=title)
     
-    combined.save(filename)
-    print(f"Plot saved as {filename}")
+    # Configure the chart with a dark theme
+    combined = combined.configure(
+        axis=alt.AxisConfig(
+            labelColor='white',
+            titleColor='white',
+            gridColor='white',
+            domainColor='white',
+            tickColor='white',
+            
+        ),
+        title=alt.TitleConfig(color='white')
+    )
+
+    return combined  # Return the combined chart object
 
 
 
-def plot_categorical_barcharts(data, categorical_columns, title=None, filename='categorical_plot_with_tooltips.html'):
-    # Ensure that data is a DataFrame
+def plot_categorical_barcharts(data, categorical_cols, title=None):
     if not isinstance(data, pd.DataFrame):
-        data = pd.DataFrame(data)
+        raise ValueError("Data must be a pandas DataFrame")
     
-    # Filter only categorical columns for plotting
-    categorical_data = data[categorical_columns].select_dtypes(include=['object', 'category'])
+    individual_charts = []
 
-    charts = []
-    for col in categorical_data.columns:
-        # Create the bar chart with tooltips
+    for col in categorical_cols:
         chart = alt.Chart(data).mark_bar().encode(
-            x=alt.X(f"{col}:N", sort='-y'),  # N indicates a nominal (categorical) field
-            y=alt.Y('count()', title='Count'),  # Count the number of entries for each category
-            tooltip=[col, alt.Tooltip('count()', title='Count')]  # Show the tooltip when hovering
+            x=alt.X(f"{col}:N", sort='-y'),
+            y=alt.Y('count()', title='Count'),
+            tooltip=[col, alt.Tooltip('count()', title='Count')]
         ).properties(
             title=f"Bar Chart of {col}"
+            # Instead of setting width to 'container', we will let Streamlit handle it with use_container_width=True
         )
-        charts.append(chart)
+        individual_charts.append(chart)
 
-    # Combine charts into a single visualization
-    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+3]) for i in range(0, len(charts), 3)])  # Adjust the number per row as needed
+    # Combine individual charts horizontally
+    combined = alt.hconcat(*individual_charts).resolve_scale(
+        x='independent', 
+        y='independent'
+    )
 
     if title:
         combined = combined.properties(title=title)
     
-    combined.save(filename)
-    print(f"Bar chart with tooltips saved as {filename}")
+    return combined
+
 
 def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None):
     if not isinstance(data, pd.DataFrame):
@@ -186,3 +190,23 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None)
         hconcat_charts = hconcat_charts.properties(title=title)
 
     return hconcat_charts
+
+
+# This function creates a scatter plot with a regression line using Altair
+def scatter_plot_with_regression(data, x_col, y_col):
+    # Base chart for scatter points
+    scatter_plot = alt.Chart(data).mark_circle(size=60).encode(
+        alt.X(x_col, type='quantitative', title=x_col),
+        alt.Y(y_col, type='quantitative', title=y_col),
+        tooltip=[x_col, y_col]  # Tooltips on hover
+    )
+
+    # Regression line
+    regression_line = scatter_plot.transform_regression(
+        x_col, y_col, method="linear"
+    ).mark_line(color='red')
+
+    # Combine the scatter plot and the regression line
+    final_chart = scatter_plot + regression_line
+
+    return final_chart
