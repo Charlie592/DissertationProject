@@ -28,6 +28,7 @@ def preprocess_data(data, handle_missing_values):
         print(f"Dropped {num_rows_dropped} rows with missing values.")
 
     financial_cols = detect_financial_columns(data)
+    time_date_cols = detect_time_date_columns(data)
     categorical_cols = data.select_dtypes(include=['object']).columns
     print("Categorical columns:", categorical_cols)
 
@@ -63,67 +64,7 @@ def preprocess_data(data, handle_missing_values):
     else:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
         normalized_data = normalize_data(normalized_data)
-        return data, normalized_data, financial_cols, categorical_cols
-
-
-"""def preprocess_data(data, handle_missing_values):
-    normalized_data = data.copy()
-
-    if handle_missing_values == False:
-        print("Dropping rows with missing values.")
-        num_rows_dropped = len(data) - len(data.dropna())
-        data.dropna(inplace=True)
-        normalized_data.dropna(inplace=True)
-        print(f"Dropped {num_rows_dropped} rows with missing values.")
-
-    financial_cols = detect_financial_columns(data)
-
-    for col in data.columns:
-        if col in financial_cols:
-            # Handle financial data specifically (e.g., normalization, categorization)
-            print(f"Handling financial column: {col}")
-            continue
-    
-    for col in normalized_data.columns:
-        if normalized_data[col].dtype == 'object':
-            # Attempt to convert column to numeric
-            normalized_data[col + '_numeric'] = pd.to_numeric(normalized_data[col], errors='coerce')
-            # Check if the conversion did not result in any NaN values (all values were numeric)
-            if not normalized_data[col + '_numeric'].isna().any():
-                # Replace original column with its numeric version
-                normalized_data[col] = normalized_data[col + '_numeric']
-            # Drop the temporary numeric column
-            normalized_data.drop(columns=[col + '_numeric'], inplace=True)
-            
-            # Initialize encoders
-            one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-            label_encoder = LabelEncoder()
-
-        if normalized_data[col].dtype == 'object':
-            # Fill NaN values in categorical columns with a placeholder
-            normalized_data[col] = normalized_data[col].fillna('missing')
-            unique_values = normalized_data[col].nunique()
-            if unique_values <= 5:
-                # OneHot encode if unique values are 5 or less
-                transformed_col = normalized_data[[col]]
-                encoded_arr = one_hot_encoder.fit_transform(transformed_col)
-                encoded_df = pd.DataFrame(encoded_arr, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
-                normalized_data.drop(col, axis=1, inplace=True)
-                normalized_data = pd.concat([normalized_data, encoded_df], axis=1)
-                data = pd.concat([data.drop(col, axis=1), encoded_df], axis=1)
-            else:
-                # Label encode if unique values are more than 5
-                print("Performing label encoding on column:", col)
-                transformed_col = normalized_data[[col]]
-                normalized_data = label_encoder.fit_transform(transformed_col)
-
-                
-
-    else:
-        normalized_data = handle_missing_values_with_tpot(normalized_data)
-        normalized_data = normalize_data(normalized_data)
-        return data, normalized_data, financial_cols
-"""
+        return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
 def detect_financial_columns(data):
     financial_keywords = ['revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary', 'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi',]
@@ -144,6 +85,14 @@ def handle_missing_values_with_tpot(data):
         data = predictive_imputation(data, column)
     return data
 
+def detect_time_date_columns(data):
+    time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
+    time_date_cols = []
+    for col in data.columns:
+        # Consider both column name and the presence of time/date keywords
+        if any(keyword in col.lower() for keyword in time_date_keywords):
+            time_date_cols.append(col)
+    return time_date_cols
 
 def predictive_imputation(data, column_to_impute):
     # Identify and drop columns where all values (except for the header) are NaN

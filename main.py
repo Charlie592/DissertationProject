@@ -10,13 +10,13 @@ from visualization.data_visualization import plot_distributions_altair, plot_cat
 def process_file(file, save_dir=None, impute_missing_values=False):
     # Adjusted to handle file-like object directly
     raw_data = load_data(file)
-    processed_data, normalized_data, financial_cols, categorical_cols = preprocess_data(raw_data, impute_missing_values)
+    processed_data, normalized_data, financial_cols, categorical_cols, time_date_cols = preprocess_data(raw_data, impute_missing_values)
     
     # Perform analysis (assuming this function now returns something, e.g., a summary)
     labels = complete_analysis_pipeline(processed_data, normalized_data)
     
     # Return processed data and any results or plots for Streamlit to display
-    return processed_data, normalized_data, labels, financial_cols, categorical_cols
+    return processed_data, normalized_data, labels, financial_cols, categorical_cols, time_date_cols
 
 def process_visualizations():
     None
