@@ -45,7 +45,7 @@ def altair_visualize_dimensionality_reduction_and_clustering(reduced_data, label
 # and is passed to anomaly_detection_optimized
 # anomalies_data, normal_data, predictions = anomaly_detection_optimized(reduced_data)
 
-def visualize_anomalies_with_predictions(reduced_data, predictions, filename='anomaly_chart_predictions.html'):
+"""def visualize_anomalies_with_predictions(reduced_data, predictions, filename='anomaly_chart_predictions.html'):
     # Ensure predictions is a flat, 1D array
     if not isinstance(predictions, np.ndarray):
         predictions = np.array(predictions)
@@ -73,7 +73,7 @@ def visualize_anomalies_with_predictions(reduced_data, predictions, filename='an
         height=800  # Specify the height here
     ).interactive()
 
-    chart_anomaly.save(filename)
+    chart_anomaly.save(filename)"""
 
 
 def plot_distributions_altair(data, plot_type='boxplot', title=None):
@@ -191,9 +191,41 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None)
 
     return hconcat_charts
 
+# Function to create scatter plot without regression line
+def scatter_plot(data, x_col, y_col):
+    chart = alt.Chart(data).mark_circle(size=60).encode(
+        x=alt.X(x_col, type='quantitative', title=x_col),
+        y=alt.Y(y_col, type='quantitative', title=y_col),
+        tooltip=[x_col, y_col]
+    )
+    return chart
 
-# This function creates a scatter plot with a regression line using Altair
+# Function to create scatter plot with regression line
 def scatter_plot_with_regression(data, x_col, y_col):
+    scatter_plot = alt.Chart(data).mark_circle(size=60).encode(
+        x=alt.X(x_col, type='quantitative', title=x_col),
+        y=alt.Y(y_col, type='quantitative', title=y_col),
+        tooltip=[x_col, y_col]
+    )
+    regression_line = scatter_plot.transform_regression(
+        x_col, y_col, method="linear"
+    ).mark_line(color='red').encode(
+        x=alt.X(x_col, type='quantitative'),
+        y=alt.Y('y:Q', title=y_col)
+    )
+    return scatter_plot + regression_line
+
+
+import altair as alt
+
+def create_scatter_plot(data, x_col, y_col):
+    return alt.Chart(data).mark_circle(size=60).encode(
+        x=alt.X(x_col, title=x_col),
+        y=alt.Y(y_col, title=y_col),
+        tooltip=[x_col, y_col]
+    )
+
+def create_scatter_plot_with_line(data, x_col, y_col):
     # Base chart for scatter points
     scatter_plot = alt.Chart(data).mark_circle(size=60).encode(
         alt.X(x_col, type='quantitative', title=x_col),

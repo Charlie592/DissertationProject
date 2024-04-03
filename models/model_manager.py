@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
-from visualization.data_visualization import altair_visualize_dimensionality_reduction_and_clustering, plot_distributions_altair, visualize_anomalies_with_predictions
+from visualization.data_visualization import altair_visualize_dimensionality_reduction_and_clustering, plot_distributions_altair
 import matplotlib
 matplotlib.use('Agg')  # Use the Anti-Grain Geometry non-GUI backend suited for scripts and web deployment
 import matplotlib.pyplot as plt
