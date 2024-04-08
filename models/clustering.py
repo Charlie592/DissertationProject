@@ -8,21 +8,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def optimal_kmeans(data):
+def optimal_kmeans(data, max_clusters=5):
     wcss = []
-    for i in range(1, 11):
-        # Perform K-means clustering
+    for i in range(1, max_clusters + 1):  # Limit the range to a maximum of 4
         kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=42)
         kmeans.fit(data)
         wcss.append(kmeans.inertia_)
-    
-    # Automatically find the elbow point
-    kn = KneeLocator(range(1, 11), wcss, curve='convex', direction='decreasing')
+
+    # Automatically find the elbow point, limited to the range [1, max_clusters]
+    kn = KneeLocator(range(1, max_clusters + 1), wcss, curve='convex', direction='decreasing')
     n_clusters_optimal = kn.knee
     print(f"Optimal number of clusters: {n_clusters_optimal}")
-    
-    return apply_kmeans(data, n_clusters=n_clusters_optimal)
 
+    return apply_kmeans(data, n_clusters=n_clusters_optimal)
 
 def apply_kmeans(data, n_clusters=3):
     # Perform K-means clustering with specified number of clusters

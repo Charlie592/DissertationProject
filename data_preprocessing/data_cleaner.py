@@ -28,14 +28,17 @@ def preprocess_data(data, handle_missing_values):
         print(f"Dropped {num_rows_dropped} rows with missing values.")
 
     financial_cols = detect_financial_columns(data)
-    time_date_cols = detect_time_date_columns(data)
+    time_date_cols, converted_data = detect_time_date_columns(data)
+    data = converted_data
+    #print("Time Date Columns:", time_date_cols)
+    #print(data.dtypes)
     categorical_cols = data.select_dtypes(include=['object']).columns
-    print("Categorical columns:", categorical_cols)
+    #print("Categorical columns:", categorical_cols)
 
     for col in data.columns:
         if col in financial_cols:
             # Handle financial data specifically (e.g., normalization, categorization)
-            print(f"Handling financial column: {col}")
+            #print(f"Handling financial column: {col}")
             continue
     
    
@@ -78,14 +81,14 @@ def detect_financial_columns(data):
 def handle_missing_values_with_tpot(data):
     # Identify columns with missing values
     columns_with_missing_values = data.columns[data.isnull().any()].tolist()
-    print("\nColumns with missing values before imputation:", columns_with_missing_values)
+    #print("\nColumns with missing values before imputation:", columns_with_missing_values)
 
     # Loop over columns with missing values and apply predictive imputation
     for column in columns_with_missing_values:
         data = predictive_imputation(data, column)
     return data
 
-def detect_time_date_columns(data):
+"""def detect_time_date_columns(data):
     time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
     time_date_cols = []
     for col in data.columns:
@@ -93,6 +96,31 @@ def detect_time_date_columns(data):
         if any(keyword in col.lower() for keyword in time_date_keywords):
             time_date_cols.append(col)
     return time_date_cols
+"""
+
+def detect_time_date_columns(data):
+    time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
+    time_date_cols = []
+    
+    for col in data.columns:
+        # Check if column name contains any time/date keyword
+        if any(keyword in col.lower() for keyword in time_date_keywords):
+            try:
+                # Try to convert to datetime
+                data[col] = pd.to_datetime(data[col])
+                time_date_cols.append(col)
+            except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime):
+                # If conversion fails, it might be a time-only column or not a datetime column
+                try:
+                    # If it could be a time-only column, convert only the time component
+                    if 'time' in col.lower() or 'hour' in col.lower():
+                        data[col] = pd.to_datetime(data[col], format='%H:%M:%S').dt.time
+                        time_date_cols.append(col)
+                except (ValueError, TypeError):
+                    # If conversion fails again, it's not a time column
+                    continue
+    return time_date_cols, data
+
 
 def predictive_imputation(data, column_to_impute):
     # Identify and drop columns where all values (except for the header) are NaN
@@ -132,8 +160,6 @@ def predictive_imputation(data, column_to_impute):
 
     print(f"Imputed missing values in '{column_to_impute}'. Missing before: {missing_before}, Missing after: {missing_after}")
     return data
-
-
 
 
 def normalize_data(normalized_data):

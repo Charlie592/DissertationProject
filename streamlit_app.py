@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
-from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line
+from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts
 from models.model_manager import visualize_feature_relationships
 from models.predictor import make_predictions
 import pandas as pd
@@ -30,11 +30,14 @@ if st.button('Process Data'):
                 st.session_state['labels'],
                 financial_cols,  # This should be stored in the session state if you want to preserve it across reruns
                 categorical_cols,
-                time_date_cols
+                time_date_cols,
+                AI_response
             ) = process_file(uploaded_file, impute_missing_values=impute_missing_values)
             st.session_state['show_visualizations'] = True
             st.session_state['financial_cols'] = financial_cols  # Add this line to store financial_cols in the session state
             st.session_state['categorical_cols'] = categorical_cols  # Presumably, you want to store this too
+            st.session_state['time_date_cols'] = time_date_cols  # Store time_date_cols in the session state
+            st.session_state['AI_response'] = AI_response
             st.success('Data processing complete!')
     else:
         st.error('Please upload a dataset to process.')
@@ -56,6 +59,10 @@ if st.session_state['show_visualizations']:
         # Check if 'categorical_cols' is defined and has entries
         if len(st.session_state.get('categorical_cols', [])) > 0:
             analysis_subpages.append("Categorical")
+        
+        # Check if 'time_date_cols' is defined and has entries
+        if len(st.session_state.get('time_date_cols', [])) > 0:
+            analysis_subpages.append("Time Series")
 
         # Define 'analysis_page' before any conditional logic that depends on it
         analysis_page = st.sidebar.radio('Select Analysis Type', analysis_subpages)
@@ -68,9 +75,11 @@ if st.session_state['show_visualizations']:
                     processed_data_df = pd.DataFrame(st.session_state['processed_data'])
                     labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
                     
-                    figures = visualize_feature_relationships(processed_data_df, labels)
+                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, AI_response)
                     for fig in figures:
                         st.pyplot(fig)
+                        st.write(AI_response_fig[fig])
+                        
 
             elif analysis_page == "Financial":
                 # Display financial analysis results
@@ -89,6 +98,22 @@ if st.session_state['show_visualizations']:
                                                             st.session_state.get('categorical_cols', []))
                 st.altair_chart(categorical_chart, use_container_width=True)
 
+            elif analysis_page == "Time Series":
+                st.write('Time series analysis results:')
+                processed_data = st.session_state['processed_data']
+                
+                # Determine numerical columns as those that are not in the categorical or financial columns
+                non_time_categorical_cols = set(st.session_state.get('categorical_cols', [])) - set(st.session_state.get('time_date_cols', []))
+                numerical_cols = [col for col in processed_data.columns if processed_data[col].dtype in ['int64', 'float64'] and col not in non_time_categorical_cols]
+                
+                # Generate the time series chart using the stored DataFrame and column information
+                time_series_chart = plot_time_series_charts(
+                    processed_data,
+                    st.session_state.get('time_date_cols', []),
+                    numerical_cols
+                )
+                st.altair_chart(time_series_chart, use_container_width=True)
+
             elif analysis_page == "Anomalies":
                 # Display anomaly analysis results
                 st.write('Anomaly analysis results:')
@@ -96,6 +121,7 @@ if st.session_state['show_visualizations']:
                 checkdata = (st.session_state['processed_data'])
                 anomalies_chart = plot_distributions_altair(st.session_state['processed_data'], plot_type='boxplot')
                 st.altair_chart(anomalies_chart, use_container_width=True)
+
 
 
     elif page == 'Explore Data':

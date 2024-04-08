@@ -19,7 +19,6 @@ def altair_visualize_dimensionality_reduction_and_clustering(reduced_data, label
     labels_str = labels.astype(str)
 
     # Create a DataFrame from your dimensionality-reduced data and labels
-    # Assuming 'reduced_data' is a NumPy array; if it's already a DataFrame, adjust accordingly
     df = pd.DataFrame(reduced_data, columns=feature_names)
     df['Cluster'] = labels_str
 
@@ -190,6 +189,43 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None)
         hconcat_charts = hconcat_charts.properties(title=title)
 
     return hconcat_charts
+
+
+def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
+    if not isinstance(data, pd.DataFrame):
+        raise ValueError("Data must be a pandas DataFrame")
+    
+    # Initialize an empty vertical chart
+    vconcat_charts = alt.VConcatChart(vconcat=[])
+    
+    for time_col in time_date_cols:
+        if time_col not in data.columns:
+            continue  # Skip if the column does not exist in the DataFrame
+        
+        # Convert the time column to datetime if not already
+        data[time_col] = pd.to_datetime(data[time_col])
+        data = data.sort_values(by=time_col)
+
+        # Loop through each numerical column to create a separate line chart
+        for num_col in numerical_cols:
+            # Create the line chart
+            chart = alt.Chart(data).mark_line(point=True).encode(
+                x=alt.X(time_col, title='Date', axis=alt.Axis(labelAngle=-45)),
+                y=alt.Y(num_col, title=num_col),
+                tooltip=[alt.Tooltip(time_col), alt.Tooltip(num_col)]
+            ).properties(
+                title=f'{num_col} over time'
+            ).interactive()
+            
+            vconcat_charts &= chart  # Concatenate charts vertically
+
+    if title:
+        # Add title to the whole concatenated chart
+        vconcat_charts = vconcat_charts.properties(title=title)
+
+    return vconcat_charts
+
+
 
 # Function to create scatter plot without regression line
 def scatter_plot(data, x_col, y_col):

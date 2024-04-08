@@ -14,6 +14,8 @@ import matplotlib
 matplotlib.use('Agg')  # Use the Anti-Grain Geometry non-GUI backend suited for scripts and web deployment
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+from OpenAI import generate_summary
 
 
 
@@ -39,62 +41,136 @@ def complete_analysis_pipeline(data, normalized_data):
         cluster_labels = optimal_kmeans(reduced_data)
         score = silhouette_score(reduced_data, cluster_labels)
         silhouette_scores[method] = score
-        print(f"{method} silhouette score: {score}")
+        #print(f"{method} silhouette score: {score}")
     
     best_method = max(silhouette_scores, key=silhouette_scores.get)
-    print(f"Best dimensionality reduction method: {best_method} with a silhouette score of {silhouette_scores[best_method]}")
+    #print(f"Best dimensionality reduction method: {best_method} with a silhouette score of {silhouette_scores[best_method]}")
     
     # Perform clustering on the best reduced data
     best_reduced_data = reduced_data_methods[best_method]
     labels = choose_and_apply_clustering(best_reduced_data)
-    # You can further analyze the clustering result or use it for visualization
-    method_name = {best_method}  # Adjust based on your actual method names
-    feature_names = ['Principal Component 1', 'Principal Component']  # Adjust based on your actual feature names
-    print(f"Labels: {labels}")
+    descriptions = generate_cluster_descriptions(data, labels)
+    for description in descriptions:
+        continue
+        #print(description)
+        #print("---")
+    AI_response={}
+    AI_response = generate_summary(descriptions)
+    print(AI_response)
+
+    return labels, AI_response
     
-    return labels
-    
-import seaborn as sns
 
-import altair as alt
-import pandas as pd
-
-import seaborn as sns
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-def visualize_feature_relationships(data, labels):
-    figures = []  # A list to store the matplotlib figure objects
+def visualize_feature_relationships(data, labels, AI_response, features=None, save_figures=False, figures_dir='figures'):
+    figures = []  # A list to store the matplotlib figure objects or figure paths if saved
     data_with_clusters = data.copy()  # Create a copy of the data
     data_with_clusters['Cluster'] = labels  # Add the Cluster column to the copied data
 
-    for cluster in data_with_clusters['Cluster'].unique():
-        # Select data for the current cluster and drop the 'Cluster' column
-        cluster_data = data_with_clusters[data_with_clusters['Cluster'] == cluster].drop('Cluster', axis=1)
-        
-        # Pairplot for a subset of features
-        plt.figure(figsize=(10, 8))
-        pairplot_fig = sns.pairplot(cluster_data)
-        plt.title(f"Feature Relationships in Cluster {cluster}")
-        figures.append(pairplot_fig.fig)  # Store the PairGrid's figure object
-        plt.close(pairplot_fig.fig)  # Close the figure window
+    # Example: Calculate the mean for numerical features for each cluster
+    cluster_characteristics = data_with_clusters.groupby('Cluster').mean()
+
+    # Identifying top distinguishing features for one cluster as an example
+    top_features = cluster_characteristics.loc[0].sort_values(ascending=False)[:3].index.tolist()
+    print("Top distinguishing features for Cluster 0:", top_features)
+
+
+    # Ensure the figures directory exists if saving figures
+    if save_figures:
+        import os
+        os.makedirs(figures_dir, exist_ok=True)
+
+    AI_response_fig={}
+    for cluster in sorted(data_with_clusters['Cluster'].unique()):
+        cluster_data = data_with_clusters[data_with_clusters['Cluster'] == cluster]
+        if features:
+            cluster_data = cluster_data[features + ['Cluster']]  # Select specified features and Cluster column
 
         # Correlation heatmap
-        heatmap_fig, ax = plt.subplots(figsize=(10, 8))  # Create a new figure for the heatmap
-        sns.heatmap(cluster_data.corr(), annot=True, fmt=".2f", ax=ax)
+        heatmap_fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(cluster_data.drop('Cluster', axis=1).corr(), annot=True, fmt=".2f", ax=ax, cmap="coolwarm")
         plt.title(f"Feature Correlations in Cluster {cluster}")
-        figures.append(heatmap_fig)  # Store the figure object
-        plt.close(heatmap_fig)  # Close the figure window
 
-    return figures  # Return the list of figure objects
+        AI_response_fig[heatmap_fig]=AI_response[cluster]
+        if save_figures:
+            heatmap_path = f"{figures_dir}/heatmap_cluster_{cluster}.png"
+            heatmap_fig.savefig(heatmap_path)
+            figures.append(heatmap_path)
+            plt.close(heatmap_fig)
+        else:
+            figures.append(heatmap_fig)
+      
+        
+
+    return figures, AI_response_fig
+
+def generate_cluster_descriptions(df, cluster_labels):
+    df['Cluster'] = cluster_labels
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    categorical_cols = df.select_dtypes(exclude=np.number).columns.tolist()
+    numeric_cols.remove('Cluster')
+
+    all_descriptions = []
+
+    for cluster_id in np.unique(cluster_labels):
+        cluster_data = df[df['Cluster'] == cluster_id]
+        other_clusters_data = df[df['Cluster'] != cluster_id]
+
+        # Section 1: Standout Fields
+        standout_desc = f"Cluster {cluster_id} standout fields are "
+        standout_fields = []
+
+        # Numeric: Top 3 based on variance
+        variances = cluster_data[numeric_cols].var()
+        top_numeric = variances.nlargest(3)
+        for field in top_numeric.index:
+            avg_val = cluster_data[field].mean()
+            standout_fields.append(f"{field} (average: {avg_val:.2f})")
+
+        # Categorical: Most significant based on frequency
+        cat_diffs = {}
+        for col in categorical_cols:
+            mode = cluster_data[col].mode()[0]
+            mode_freq = cluster_data[col].value_counts(normalize=True).get(mode, 0)
+            cat_diffs[col] = mode_freq
+        if cat_diffs:
+            top_cat = max(cat_diffs, key=cat_diffs.get)
+            top_mode = cluster_data[top_cat].mode()[0]
+            standout_fields.append(f"{top_cat} (most common: {top_mode})")
+
+        standout_desc += "; ".join(standout_fields) + "."
+
+        # Section 2: Differentiation from Other Clusters
+        diff_desc = f"\nHow Cluster {cluster_id} differs: "
+        diff_fields = []
+        for field in top_numeric.index:
+            cluster_avg = cluster_data[field].mean()
+            other_avg = other_clusters_data[field].mean()
+            difference = "higher" if cluster_avg > other_avg else "lower"
+            diff_fields.append(f"{field} is {difference} than the average of other clusters")
+
+        if cat_diffs:
+            mode_freq_other_clusters = other_clusters_data[top_cat].value_counts(normalize=True).get(top_mode, 0)
+            freq_diff = cat_diffs[top_cat] - mode_freq_other_clusters
+            freq_desc = "more common" if freq_diff > 0 else "less common"
+            diff_fields.append(f"{top_mode} in {top_cat} is {freq_desc} compared to other clusters")
+
+        diff_desc += "; ".join(diff_fields) + "."
+
+        # Combine both sections for the cluster's description
+        cluster_description = standout_desc + diff_desc
+        all_descriptions.append(cluster_description)
+
+    return all_descriptions
+
+
+
 
 
 
 
 def choose_and_apply_clustering(data):
     # Example simplistic criteria: Dataset size
-    if len(data) < 1000:  # Assuming larger datasets might have more complex cluster shapes
+    if len(data) < 1:  # Assuming larger datasets might have more complex cluster shapes
         print("Using DBSCAN...")
         labels = optimal_dbscan(data)
     else:
@@ -115,3 +191,5 @@ def choose_and_apply_clustering(data):
     save_dir = '/Users/charlierobinson/Documents/Code/DissertationCode/Project 2/visualizations'
     visualize_feature_importances(tpot, X_test, y_test, feature_names, save_dir)
 """
+
+
