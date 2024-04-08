@@ -5,16 +5,10 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 import numpy as np
 from tpot import TPOTRegressor, TPOTClassifier
-
-
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
-
-
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 import pandas as pd
 import numpy as np
-import re 
 
 
 def preprocess_data(data, handle_missing_values):
@@ -27,6 +21,7 @@ def preprocess_data(data, handle_missing_values):
         normalized_data.dropna(inplace=True)
         print(f"Dropped {num_rows_dropped} rows with missing values.")
 
+    data = drop_id_columns(data)
     financial_cols = detect_financial_columns(data)
     time_date_cols, converted_data = detect_time_date_columns(data)
     data = converted_data
@@ -120,6 +115,11 @@ def detect_time_date_columns(data):
                     # If conversion fails again, it's not a time column
                     continue
     return time_date_cols, data
+
+def drop_id_columns(data):
+    id_columns = [col for col in data.columns if 'ID' in col.upper()]
+    data_no_id = data.drop(columns=id_columns, errors='ignore')
+    return data_no_id
 
 
 def predictive_imputation(data, column_to_impute):

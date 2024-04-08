@@ -164,10 +164,6 @@ def generate_cluster_descriptions(df, cluster_labels):
 
 
 
-
-
-
-
 def choose_and_apply_clustering(data):
     # Example simplistic criteria: Dataset size
     if len(data) < 1:  # Assuming larger datasets might have more complex cluster shapes

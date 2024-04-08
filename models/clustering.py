@@ -23,6 +23,8 @@ def optimal_kmeans(data, max_clusters=5):
     return apply_kmeans(data, n_clusters=n_clusters_optimal)
 
 def apply_kmeans(data, n_clusters=3):
+    if n_clusters is None or n_clusters < 1:
+        n_clusters = 1
     # Perform K-means clustering with specified number of clusters
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     labels = kmeans.fit_predict(data)
