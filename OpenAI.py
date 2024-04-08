@@ -5,6 +5,7 @@ import os
 import time
 import json
 import streamlit as st
+import re 
 
 load_dotenv()
 
@@ -18,7 +19,7 @@ def generate_summary(descriptions):
       max_tokens=4096,
       temperature=0.7,
       messages=[
-          {"role": "system", "content": "Provide the following fields in JSON dict \"Cluster name\",\"heading\",\"description\",\"buzxwords\",\"key points\".  For each cluster provide a detailed, easily understandable description of at least 100 words and key points plus buzzwords with a heading made with a maximum of 5 words, include text formating but do not assume its about any particular subject or to any particular audience:"},
+          {"role": "system", "content": "Provide the following fields in JSON dict \"Cluster name\",\"heading\",\"description\",\"buzxwords\",\"key points\".  For each cluster provide a detailed, easily understandable description of at least 100 words and key points semicolon delimted (make sure there is always more than one keypoint for each cluster) plus buzzwords with a heading made with a maximum of 5 words, include text formating but do not assume its about any particular subject or to any particular audience:"},
           {"role": "user", "content": new_descriptions},
       ],
   )
@@ -30,7 +31,18 @@ def generate_summary(descriptions):
   # Loop through each cluster in the JSON data
   for cluster in data['clusters']:
       # Combine the heading and key points with a line feed
-      combined_text = f"***{cluster['heading']}***\n**{cluster['description']}**\n**Buzzwords**\n{cluster['buzzwords']}\n**Key points**\n{cluster['key points']}"
+      key_points_list = cluster['key points'].split('; ')
+      key_points_html = '<ul>' + ''.join(f'<li>{point}</li>' for point in key_points_list) + '</ul>'
+
+      combined_text = f"""
+      <div style='font-weight: bold;'>{cluster['heading']}</div>
+      <div>{cluster['description']}</div>
+      <div style='font-weight: bold;'>Buzzwords:</div>
+      <div>{cluster['buzzwords']}</div>
+      <div style='font-weight: bold;'>Key points:</div>
+      {key_points_html}
+      """
+
       # Add the combined text to the array
       combined_array.append(combined_text)
 

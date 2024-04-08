@@ -78,7 +78,7 @@ if st.session_state['show_visualizations']:
                     figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, AI_response)
                     for fig in figures:
                         st.pyplot(fig)
-                        st.write(AI_response_fig[fig])
+                        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
                         
 
             elif analysis_page == "Financial":
