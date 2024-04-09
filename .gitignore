@@ -5,4 +5,5 @@ venv/
 test.py
 TestDBs/
 .env
+uploads
 ```
