@@ -34,7 +34,7 @@ def generate_summary(descriptions, retry_lmit=3):
     except json.JSONDecodeError as e:
         print(f"JSON decoding failed: {e}")
         attempts += 1
-        time.sleep(1)  # Wait a bit before retrying
+        time.sleep(20)  # Wait a bit before retrying
         continue
 
     combined_array = []
