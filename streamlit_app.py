@@ -69,6 +69,8 @@ if st.session_state['show_visualizations']:
             if analysis_page == "General Analysis":
                 # Display general analysis results
                 st.write('General analysis results:')
+                st.caption('The general analysis section provides an overview of the dataset, highlighting key statistics and distributions. By identifying the numerical columns within the dataset, this section generates histograms and box plots to visualize the data distribution. These visualizations offer insights into the central tendency, spread, and skewness of the data, enabling a deeper understanding of the dataset characteristics. Whether examining revenue figures, customer counts, or any other numerical data, this section provides a comprehensive overview of the dataset dynamics.\n\n')
+                st.write("<br>", unsafe_allow_html=True)
                 if 'processed_data' in st.session_state:
                     processed_data_df = pd.DataFrame(st.session_state['processed_data'])
                     labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
@@ -82,6 +84,8 @@ if st.session_state['show_visualizations']:
             elif analysis_page == "Financial":
                 # Display financial analysis results
                 st.write('Financial analysis results:')
+                st.caption('This section is dedicated to showcasing the financial aspects of the dataset. By recognizing all financial-related columns, it presents an in-depth analysis through bar charts that pair these financial metrics with categorical columns. This method of visualization not only simplifies the comparison across different categories but also provides a clear perspective on financial trends and distributions within the dataset. Whether its revenue, expenses, or any other financial parameter, this section brings critical financial insights to the forefront.\n\n')
+                st.write("<br>", unsafe_allow_html=True)
                 # Generate the financial chart using the stored DataFrame and column information
                 financial_chart = plot_financial_barcharts(st.session_state['processed_data'], 
                                                         st.session_state.get('categorical_cols', []), 
@@ -91,6 +95,8 @@ if st.session_state['show_visualizations']:
             elif analysis_page == "Categorical":
                 # Display categorical analysis results
                 st.write('Categorical analysis results:')
+                st.caption('In the categorical section, our focus shifts to the qualitative aspects of the dataset. Here, all categorical columns are identified and displayed alongside numerical columns in intuitive bar charts. This visualization technique allows for an easy comparison of numerical values across different categories, offering insights into patterns, frequencies, and distributions that might not be immediately evident. Whether analyzing demographic information, product categories, or any other non-numeric data, this section provides a comprehensive overview of categorical data dynamics.\n\n')
+                st.write("<br>", unsafe_allow_html=True)
                 # Generate the categorical chart using the stored DataFrame and column information
                 categorical_chart = plot_categorical_barcharts(st.session_state['processed_data'],
                                                             st.session_state.get('categorical_cols', []))
@@ -98,6 +104,8 @@ if st.session_state['show_visualizations']:
 
             elif analysis_page == "Time Series":
                 st.write('Time series analysis results:')
+                st.caption("<br>", unsafe_allow_html=True)
+                st.write('When the dataset includes time or date columns, this section comes into play by offering time series graphs. These visualizations track changes and trends over time, providing a temporal dimension to the data analysis. Time/date charts are invaluable for identifying patterns, seasonal variations, fluctuations, and long-term trends. Whether youre examining sales over the months, website traffic across days, or any time-sensitive data, this section reveals the temporal relationships and dynamics at play.\n\n')
                 processed_data = st.session_state['processed_data']
                 
                 # Determine numerical columns as those that are not in the categorical or financial columns
@@ -115,6 +123,8 @@ if st.session_state['show_visualizations']:
             elif analysis_page == "Anomalies":
                 # Display anomaly analysis results
                 st.write('Anomaly analysis results:')
+                st.caption('In this section, we delve into the identification of anomalies within the dataset through the use of histograms. Each histogram highlights data distribution for specific variables, with a keen focus on the upper and lower quartiles. Anomalies, or outliers, are visually demarcated, drawing attention to data points that deviate significantly from the norm. This visualization aids in understanding the variability within the data and pinpointing irregularities that may warrant further investigation.\n\n')
+                st.write("<br>", unsafe_allow_html=True)
                 # Code for displaying anomaly analysis results goes here
                 checkdata = (st.session_state['processed_data'])
                 anomalies_chart = plot_distributions_altair(st.session_state['processed_data'], plot_type='boxplot')
