@@ -252,8 +252,6 @@ def scatter_plot_with_regression(data, x_col, y_col):
     return scatter_plot + regression_line
 
 
-import altair as alt
-
 def create_scatter_plot(data, x_col, y_col):
     return alt.Chart(data).mark_circle(size=60).encode(
         x=alt.X(x_col, title=x_col),
@@ -278,3 +276,46 @@ def create_scatter_plot_with_line(data, x_col, y_col):
     final_chart = scatter_plot + regression_line
 
     return final_chart
+
+
+def visualize_feature_relationships(data, labels, AI_response, features=None, save_figures=False, figures_dir='figures'):
+    figures = []  # A list to store the matplotlib figure objects or figure paths if saved
+    data_with_clusters = data.copy()  # Create a copy of the data
+    data_with_clusters['Cluster'] = labels  # Add the Cluster column to the copied data
+
+    # Example: Calculate the mean for numerical features for each cluster
+    cluster_characteristics = data_with_clusters.groupby('Cluster').mean()
+
+    # Identifying top distinguishing features for one cluster as an example
+    top_features = cluster_characteristics.loc[0].sort_values(ascending=False)[:3].index.tolist()
+    #print("Top distinguishing features for Cluster 0:", top_features)
+
+
+    # Ensure the figures directory exists if saving figures
+    if save_figures:
+        import os
+        os.makedirs(figures_dir, exist_ok=True)
+
+    AI_response_fig={}
+    for cluster in sorted(data_with_clusters['Cluster'].unique()):
+        cluster_data = data_with_clusters[data_with_clusters['Cluster'] == cluster]
+        if features:
+            cluster_data = cluster_data[features + ['Cluster']]  # Select specified features and Cluster column
+
+        # Correlation heatmap
+        heatmap_fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(cluster_data.drop('Cluster', axis=1).corr(), annot=True, fmt=".2f", ax=ax, cmap="coolwarm")
+        plt.title(f"Feature Correlations in Cluster {cluster}")
+
+        AI_response_fig[heatmap_fig]=AI_response[cluster]
+        if save_figures:
+            heatmap_path = f"{figures_dir}/heatmap_cluster_{cluster}.png"
+            heatmap_fig.savefig(heatmap_path)
+            figures.append(heatmap_path)
+            plt.close(heatmap_fig)
+        else:
+            figures.append(heatmap_fig)
+      
+        
+
+    return figures, AI_response_fig

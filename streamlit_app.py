@@ -3,8 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
-from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts
-from models.model_manager import visualize_feature_relationships
+from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships
 from models.predictor import make_predictions
 import pandas as pd
 
