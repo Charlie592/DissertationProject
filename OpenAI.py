@@ -23,9 +23,9 @@ def generate_summary(descriptions):
           {"role": "user", "content": new_descriptions},
       ],
   )
-  print (response.choices[0].message.content)
+  #print (response.choices[0].message.content)
   data = json.loads(response.choices[0].message.content)
-  print(data)
+  #print(data)
   combined_array = []
 
   # Loop through each cluster in the JSON data

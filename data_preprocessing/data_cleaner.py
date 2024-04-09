@@ -12,14 +12,6 @@ import numpy as np
 
 
 def preprocess_data(data, handle_missing_values):
-    normalized_data = data.copy()
-
-    if handle_missing_values == False:
-        print("Dropping rows with missing values.")
-        num_rows_dropped = len(data) - len(data.dropna())
-        data.dropna(inplace=True)
-        normalized_data.dropna(inplace=True)
-        print(f"Dropped {num_rows_dropped} rows with missing values.")
 
     data = drop_id_columns(data)
     financial_cols = detect_financial_columns(data)
@@ -30,12 +22,15 @@ def preprocess_data(data, handle_missing_values):
     categorical_cols = data.select_dtypes(include=['object']).columns
     #print("Categorical columns:", categorical_cols)
 
-    for col in data.columns:
-        if col in financial_cols:
-            # Handle financial data specifically (e.g., normalization, categorization)
-            #print(f"Handling financial column: {col}")
-            continue
-    
+    normalized_data = data.copy()
+
+    if handle_missing_values == False:
+        print("Dropping rows with missing values.")
+        num_rows_dropped = len(data) - len(data.dropna())
+        data.dropna(inplace=True)
+        normalized_data.dropna(inplace=True)
+        print(f"Dropped {num_rows_dropped} rows with missing values.")
+
    
         # Initialize encoders 
         one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
@@ -62,7 +57,8 @@ def preprocess_data(data, handle_missing_values):
     else:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
         normalized_data = normalize_data(normalized_data)
-        return data, normalized_data, financial_cols, categorical_cols, time_date_cols
+        
+    return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
 def detect_financial_columns(data):
     financial_keywords = ['revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary', 'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi',]
@@ -83,41 +79,37 @@ def handle_missing_values_with_tpot(data):
         data = predictive_imputation(data, column)
     return data
 
-"""def detect_time_date_columns(data):
-    time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
-    time_date_cols = []
-    for col in data.columns:
-        # Consider both column name and the presence of time/date keywords
-        if any(keyword in col.lower() for keyword in time_date_keywords):
-            time_date_cols.append(col)
-    return time_date_cols
-"""
-
 def detect_time_date_columns(data):
     time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
     time_date_cols = []
-    
+
     for col in data.columns:
         # Check if column name contains any time/date keyword
         if any(keyword in col.lower() for keyword in time_date_keywords):
             try:
                 # Try to convert to datetime
                 data[col] = pd.to_datetime(data[col])
-                time_date_cols.append(col)
+                # After conversion, process the datetime column further, e.g., convert to UNIX timestamp
+                data[col + '_timestamp'] = data[col].astype(int) / 10**9
+                time_date_cols.append(col + '_timestamp')
+                # Drop the original datetime column if it's no longer needed
+                data.drop(col, axis=1, inplace=True)
             except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime):
                 # If conversion fails, it might be a time-only column or not a datetime column
                 try:
-                    # If it could be a time-only column, convert only the time component
+                    # If it could be a time-only column, extract the time component
                     if 'time' in col.lower() or 'hour' in col.lower():
                         data[col] = pd.to_datetime(data[col], format='%H:%M:%S').dt.time
                         time_date_cols.append(col)
                 except (ValueError, TypeError):
                     # If conversion fails again, it's not a time column
                     continue
+
     return time_date_cols, data
 
 def drop_id_columns(data):
-    id_columns = [col for col in data.columns if 'ID' in col.upper()]
+    id_columns = [col for col in data.columns if 'ID' in col.upper() or col.startswith('Unnamed')]
+    print(f"Dropping ID columns: {id_columns}")
     data_no_id = data.drop(columns=id_columns, errors='ignore')
     return data_no_id
 

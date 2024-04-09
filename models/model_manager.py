@@ -71,7 +71,7 @@ def visualize_feature_relationships(data, labels, AI_response, features=None, sa
 
     # Identifying top distinguishing features for one cluster as an example
     top_features = cluster_characteristics.loc[0].sort_values(ascending=False)[:3].index.tolist()
-    print("Top distinguishing features for Cluster 0:", top_features)
+    #print("Top distinguishing features for Cluster 0:", top_features)
 
 
     # Ensure the figures directory exists if saving figures
