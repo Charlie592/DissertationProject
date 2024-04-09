@@ -30,13 +30,12 @@ if st.button('Process Data'):
                 financial_cols,  # This should be stored in the session state if you want to preserve it across reruns
                 categorical_cols,
                 time_date_cols,
-                AI_response
+                st.session_state['AI_response']
             ) = process_file(uploaded_file, impute_missing_values=impute_missing_values)
             st.session_state['show_visualizations'] = True
             st.session_state['financial_cols'] = financial_cols  # Add this line to store financial_cols in the session state
             st.session_state['categorical_cols'] = categorical_cols  # Presumably, you want to store this too
             st.session_state['time_date_cols'] = time_date_cols  # Store time_date_cols in the session state
-            st.session_state['AI_response'] = AI_response
             st.success('Data processing complete!')
     else:
         st.error('Please upload a dataset to process.')
@@ -74,7 +73,7 @@ if st.session_state['show_visualizations']:
                     processed_data_df = pd.DataFrame(st.session_state['processed_data'])
                     labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
                     
-                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, AI_response)
+                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
                     for fig in figures:
                         st.pyplot(fig)
                         st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
@@ -279,3 +278,5 @@ if st.session_state['show_visualizations']:
 
             else:
                 st.warning("Please select at least one feature to include in the model.")
+
+
