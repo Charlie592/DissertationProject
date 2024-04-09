@@ -1,25 +1,30 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
-import pandas as pd
-
-# Assuming load_data uses pandas to load the file
 def load_data(file):
-    # Check if file is a file-like object
-    if hasattr(file, 'read'):
-        # Use pandas to load file directly from file-like object
+    # Debugging: Print the file type to help diagnose issues
+    print(f"Loading file: {file.name}, type: {type(file)}")
+
+    try:
+        # Determine the file extension and choose the loading method accordingly
         if str(file.name).endswith('.csv'):
-            return pd.read_csv(file)
+            # Attempt to read a CSV file
+            try:
+                return pd.read_csv(file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    return pd.read_csv(file, encoding='ISO-8859-1')  # Try latin1 encoding
+                except UnicodeDecodeError:
+                    return pd.read_csv(file, encoding='cp1252')  # Try Windows-1252 encoding
+            except pd.errors.EmptyDataError:
+                print("The file is empty. Please upload a valid file.")
+                return None
         elif str(file.name).endswith('.xlsx'):
             return pd.read_excel(file)
         elif str(file.name).endswith('.json'):
             return pd.read_json(file)
         elif str(file.name).endswith('.txt'):
             return pd.read_csv(file, delimiter='\t')
-    else:
-        # Original load_data functionality for file paths
-        # Your existing code to load data from a path
-        pass
-
-
+    except Exception as e:
+        # Catch any other exception and log it
+        print(f"Failed to load file due to: {e}")
+        return None
