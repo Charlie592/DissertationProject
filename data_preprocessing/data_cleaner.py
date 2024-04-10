@@ -9,12 +9,14 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 import pandas as pd
 import numpy as np
+import re
 
 
 def preprocess_data(data, handle_missing_values):
 
     data = drop_id_columns(data)
     financial_cols = detect_financial_columns(data)
+    print("Financial Columns:", financial_cols)
     time_date_cols, converted_data = detect_time_date_columns(data)
     data = converted_data
     #print("Time Date Columns:", time_date_cols)
@@ -61,13 +63,26 @@ def preprocess_data(data, handle_missing_values):
     return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
 def detect_financial_columns(data):
-    financial_keywords = ['revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary', 'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi', 'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona', 'won', 'yuan', 'renminbi',]
+    financial_keywords = [
+        'revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary',
+        'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen',
+        'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona',
+        'won', 'yuan', 'renminbi'
+    ]
+
     financial_cols = []
     for col in data.columns:
-        # Consider both column name and the presence of currency symbols in the data
-        if any(keyword in col.lower() for keyword in financial_keywords) or data[col].astype(str).str.contains(r'[\$\£\€]', regex=True).any():
+        # Check for full-word match in column name
+        if any(re.search(r'\b{}\b'.format(keyword), col.lower()) for keyword in financial_keywords):
             financial_cols.append(col)
+            continue  # If the keyword is found in the column name, no need to check for symbols in its data
+        
+        # Check for presence of currency symbols in the data of the column
+        if data[col].astype(str).str.contains(r'[\$\£\€]', regex=True).any():
+            financial_cols.append(col)
+
     return financial_cols
+
 
 def handle_missing_values_with_tpot(data):
     # Identify columns with missing values
@@ -107,11 +122,45 @@ def detect_time_date_columns(data):
 
     return time_date_cols, data
 
+import pandas as pd
+
 def drop_id_columns(data):
-    id_columns = [col for col in data.columns if 'ID' in col.upper() or col.startswith('Unnamed')]
+    # Define keywords for identifying ID columns
+    id_keywords = ['_id', 'id_', ' id', 'id ']
+
+    # Initialize list to store ID columns
+    id_columns = []
+
+    # Iterate over the columns of the DataFrame
+    for col in data.columns:
+        # Check for full-word match in column name
+        if any(re.search(r'\b{}\b'.format(keyword), col.lower()) for keyword in id_keywords):
+            # If full-word match is found, add the column to the list of ID columns
+            id_columns.append(col)
+        
+        # Check if the data in the column increments by 1 row by row
+        elif pd.api.types.is_numeric_dtype(data[col]):
+            is_id_column = True
+            prev_value = None
+            for value in data[col]:
+                if prev_value is not None and value != prev_value + 1:
+                    is_id_column = False
+                    break
+                prev_value = value
+            
+            if is_id_column:
+                id_columns.append(col)
+
+    # Print information about the columns and ID columns
+    print(f"Columns: {data.columns}")
     print(f"Dropping ID columns: {id_columns}")
+
+    # Drop the ID columns from the DataFrame, ignoring errors
     data_no_id = data.drop(columns=id_columns, errors='ignore')
+
+    # Return the modified DataFrame
     return data_no_id
+
 
 
 def predictive_imputation(data, column_to_impute):
