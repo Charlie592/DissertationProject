@@ -71,14 +71,17 @@ if st.session_state['show_visualizations']:
                 st.write('General analysis results:')
                 st.caption('The general analysis section provides an overview of the dataset, highlighting key statistics and distributions. By identifying the numerical columns within the dataset, this section generates histograms and box plots to visualize the data distribution. These visualizations offer insights into the central tendency, spread, and skewness of the data, enabling a deeper understanding of the dataset characteristics. Whether examining revenue figures, customer counts, or any other numerical data, this section provides a comprehensive overview of the dataset dynamics.\n\n')
                 st.write("<br>", unsafe_allow_html=True)
-                if 'processed_data' in st.session_state:
-                    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
-                    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
-                    
-                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
-                    for fig in figures:
-                        st.pyplot(fig)
-                        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
+
+                # Code for displaying general analysis results goes here - Taken out to save tokens
+
+                #if 'processed_data' in st.session_state:
+                #    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
+                #    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
+                #    
+                #    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
+                #    for fig in figures:
+                #        st.pyplot(fig)
+                #        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
                         
 
             elif analysis_page == "Financial":
