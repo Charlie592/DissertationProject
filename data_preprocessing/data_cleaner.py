@@ -9,18 +9,19 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 import pandas as pd
 import numpy as np
+from dateutil import parser
 import re
 
 
 def preprocess_data(data, handle_missing_values):
 
+    print(data.head(10))
     data = drop_id_columns(data)
     financial_cols = detect_financial_columns(data)
-    print("Financial Columns:", financial_cols)
     time_date_cols, converted_data = detect_time_date_columns(data)
     data = converted_data
-    #print("Time Date Columns:", time_date_cols)
-    #print(data.dtypes)
+    print("Time/Date columns:", time_date_cols)
+    print(data.head(10))
     categorical_cols = data.select_dtypes(include=['object']).columns
     #print("Categorical columns:", categorical_cols)
 
@@ -95,32 +96,72 @@ def handle_missing_values_with_tpot(data):
     return data
 
 def detect_time_date_columns(data):
-    time_date_keywords = ['date', 'time', 'hour', 'minute', 'second', 'day', 'month', 'year']
     time_date_cols = []
+    date_format_YYYY = {
+        "%Y-%m-%d": r'\d{4}\D\d{1,2}\D\d{1,2}'  # YYYY-M-D or YYYY-MM-DD
+    }
+    date_formats = {
+        "%d/%m/%Y": r'\d{1,2}[\/\- ]\d{1,2}[\/\- ]\d{4}',  # D/M/YYYY or DD/MM/YYYY
+        "%m/%d/%Y": r'\d{1,2}[\/\- ]\d{1,2}[\/\- ]\d{4}'   # M/D/YYYY or MM/DD/YYYY
+    }
+    time_pattern = r'\d{2}:\d{2}(:\d{2})?(\sAM|\sPM)?'
+
+
+    def infer_date_format(date_str):
+        for format, regex in date_formats.items():
+            if re.match(regex, date_str):
+                return format
+        return None  # Unknown format
+    
+    def parse_time(time_str):
+        for fmt in ('%H:%M', '%I:%M:%S %p', '%H:%M:%S'):
+            try:
+                # Return only the time part
+                return pd.to_datetime(time_str, format=fmt).time()
+            except ValueError:
+                continue
+        return None # or raise an exception
 
     for col in data.columns:
-        # Check if column name contains any time/date keyword
-        if any(keyword in col.lower() for keyword in time_date_keywords):
-            try:
-                # Try to convert to datetime
-                data[col] = pd.to_datetime(data[col])
-                # After conversion, process the datetime column further, e.g., convert to UNIX timestamp
-                data[col + '_timestamp'] = data[col].astype(int) / 10**9
-                time_date_cols.append(col + '_timestamp')
-                # Drop the original datetime column if it's no longer needed
-                data.drop(col, axis=1, inplace=True)
-            except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime):
-                # If conversion fails, it might be a time-only column or not a datetime column
-                try:
-                    # If it could be a time-only column, extract the time component
-                    if 'time' in col.lower() or 'hour' in col.lower():
-                        data[col] = pd.to_datetime(data[col], format='%H:%M:%S').dt.time
-                        time_date_cols.append(col)
-                except (ValueError, TypeError):
-                    # If conversion fails again, it's not a time column
-                    continue
+        sample_values = data[col].dropna().astype(str).sample(min(100, len(data[col])))
+        # Flag to track if column has been processed as date or time
+        processed_as_date_or_time = False
+        
+        if any(re.search(pattern, value) for pattern in date_format_YYYY.values() for value in sample_values):
+            # Process as date
+            data[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce').dt.strftime('%Y-%m-%d')
+            # Mark column as processed
+            processed_as_date_or_time = True
+            time_date_cols.append(f'{col}_date')
+            
+        elif any(re.search(pattern, value) for pattern in date_formats.values() for value in sample_values):
+            # Further processing for other date formats
+            sample_dates = [value for value in sample_values if any(re.search(date_formats[fmt], value) for fmt in date_formats)]
+            
+            if sample_dates:
+                inferred_format = infer_date_format(sample_dates[0])
+                if inferred_format:
+                    # Process according to the inferred format
+                    data[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce').dt.strftime('%Y-%m-%d')
+                    # Mark column as processed
+                    processed_as_date_or_time = True
+                    time_date_cols.append(f'{col}_date')
+        
+        if any(re.search(time_pattern, value) for value in sample_values):
+            # Process as time
+            data[f'{col}_time'] = data[col].apply(parse_time)
+            # Mark column as processed
+            processed_as_date_or_time = True
+            time_date_cols.append(f'{col}_time')
+        
+        # If the column was processed as date or time, drop the original column
+        if processed_as_date_or_time:
+            data.drop(col, axis=1, inplace=True)
 
+
+    # Assuming the function should return the modified DataFrame and the list of new time/date related columns
     return time_date_cols, data
+
 
 import pandas as pd
 
@@ -150,6 +191,9 @@ def drop_id_columns(data):
             
             if is_id_column:
                 id_columns.append(col)
+
+        #if len(data[col]) == data[col].nunique():
+            #id_columns.append(col)
 
     # Print information about the columns and ID columns
     print(f"Columns: {data.columns}")

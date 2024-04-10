@@ -78,13 +78,18 @@ def plot_categorical_barcharts(data, categorical_cols, N=20, min_count=3):
         # If there are more than N categories, include "Other"
         if len(counts) > N:
             top_counts = counts.head(N-1)
-            top_counts.loc[N] = ['Other', counts['count'][N:].sum()]
+            other_count = counts['count'][N-1:].sum()
+            top_counts = top_counts.append({col: 'Other', 'count': other_count}, ignore_index=True)
+            # Create a sort_key that places 'Other' at the end
+            top_counts['sort_key'] = range(len(top_counts) - 1, -1, -1)
+            top_counts.loc[top_counts[col] == 'Other', 'sort_key'] = -1
+            top_counts = top_counts.sort_values('sort_key', ascending=False).drop(columns='sort_key')
         else:
             top_counts = counts
 
         if not top_counts.empty:
             chart = alt.Chart(top_counts).mark_bar(cornerRadius=3).encode(
-                x=alt.X(f"{col}:N", sort='-y'),
+                x=alt.X(f"{col}:N", sort=None),
                 y=alt.Y('count:Q', title='Count'),
                 color=alt.Color(f"{col}:N", scale=alt.Scale(scheme='category20'), legend=None),
                 tooltip=[alt.Tooltip(f'{col}:N', title='Category'), alt.Tooltip('count:Q', title='Count')]
@@ -96,13 +101,14 @@ def plot_categorical_barcharts(data, categorical_cols, N=20, min_count=3):
 
     if individual_charts:
         combined = alt.hconcat(*individual_charts).resolve_scale(
-            x='independent', 
+            x='independent',
             y='independent'
         )
     else:
         combined = None
 
     return combined
+
 
 
 import altair as alt
@@ -137,7 +143,7 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
             # Chart creation logic for either bar or pie chart based on number of categories
             if len(top_categories) <= N:
                 chart = alt.Chart(aggregated_data).mark_bar().encode(
-                    x=alt.X(f'{cat_col}:N', title=cat_col),
+                    x=alt.X(f'{cat_col}:N', title=cat_col, sort=None),
                     y=alt.Y(f'{financial_col}:Q', title=f'Sum of {financial_col}'),
                     color=alt.Color(f'{cat_col}:N', legend=None),
                     tooltip=[alt.Tooltip(f'{cat_col}:N'), alt.Tooltip(f'{financial_col}:Q')]
@@ -172,6 +178,9 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
 
 
 
+import pandas as pd
+import altair as alt
+
 def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
     if not isinstance(data, pd.DataFrame):
         raise ValueError("Data must be a pandas DataFrame")
@@ -184,7 +193,8 @@ def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
             continue  # Skip if the column does not exist in the DataFrame
         
         # Convert the time column to datetime if not already
-        data[time_col] = pd.to_datetime(data[time_col])
+        data[time_col] = pd.to_datetime(data[time_col], errors='coerce')  # 'coerce' will NaT for invalid dates
+        data = data.dropna(subset=[time_col])  # Drop rows with NaT (invalid dates)
         data = data.sort_values(by=time_col)
 
         # Loop through each numerical column to create a separate line chart
@@ -205,6 +215,7 @@ def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
         vconcat_charts = vconcat_charts.properties(title=title)
 
     return vconcat_charts
+
 
 
 def create_scatter_plot(data, x_col, y_col):

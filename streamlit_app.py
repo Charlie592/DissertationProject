@@ -74,14 +74,14 @@ if st.session_state['show_visualizations']:
 
                 # Code for displaying general analysis results goes here - Taken out to save tokens
 
-                #if 'processed_data' in st.session_state:
-                #    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
-                #    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
-                #    
-                #    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
-                #    for fig in figures:
-                #        st.pyplot(fig)
-                #        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
+                if 'processed_data' in st.session_state:
+                    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
+                    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
+                    
+                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
+                    for fig in figures:
+                        st.pyplot(fig)
+                        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
                         
 
             elif analysis_page == "Financial":
@@ -107,8 +107,8 @@ if st.session_state['show_visualizations']:
 
             elif analysis_page == "Time Series":
                 st.write('Time series analysis results:')
-                st.caption("<br>", unsafe_allow_html=True)
-                st.write('When the dataset includes time or date columns, this section comes into play by offering time series graphs. These visualizations track changes and trends over time, providing a temporal dimension to the data analysis. Time/date charts are invaluable for identifying patterns, seasonal variations, fluctuations, and long-term trends. Whether youre examining sales over the months, website traffic across days, or any time-sensitive data, this section reveals the temporal relationships and dynamics at play.\n\n')
+                st.caption('When the dataset includes time or date columns, this section comes into play by offering time series graphs. These visualizations track changes and trends over time, providing a temporal dimension to the data analysis. Time/date charts are invaluable for identifying patterns, seasonal variations, fluctuations, and long-term trends. Whether youre examining sales over the months, website traffic across days, or any time-sensitive data, this section reveals the temporal relationships and dynamics at play.\n\n')
+                st.write("<br>", unsafe_allow_html=True)
                 processed_data = st.session_state['processed_data']
                 
                 # Determine numerical columns as those that are not in the categorical or financial columns
