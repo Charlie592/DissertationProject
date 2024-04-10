@@ -12,11 +12,10 @@ def process_file(file, save_dir=None, impute_missing_values=False):
     raw_data = load_data(file)
     processed_data, normalized_data, financial_cols, categorical_cols, time_date_cols = preprocess_data(raw_data, impute_missing_values)
     
-    # Perform analysis (assuming this function now returns something, e.g., a summary)
-    labels, AI_Response = complete_analysis_pipeline(processed_data, normalized_data)
-    print(categorical_cols)
+    # Perform analysis on the processed data
+    labels, AI_response = complete_analysis_pipeline(processed_data, normalized_data)
     # Return processed data and any results or plots for Streamlit to display
-    return processed_data, normalized_data, labels, financial_cols, categorical_cols, time_date_cols, AI_Response
+    return processed_data, normalized_data, labels, financial_cols, categorical_cols, time_date_cols, AI_response
 
 # If you want to process a default file when main.py is run directly:
 if __name__ == "__main__":
