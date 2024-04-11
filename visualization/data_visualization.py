@@ -261,15 +261,15 @@ def create_scatter_plot_with_line(data, x_col, y_col):
 
 def visualize_feature_relationships(data, labels, AI_response, features=None, save_figures=False, figures_dir='figures'):
     figures = []  # A list to store the matplotlib figure objects or figure paths if saved
-    data_with_clusters = data.copy()  # Create a copy of the data
-    data_with_clusters['Cluster'] = labels  # Add the Cluster column to the copied data
+    data_with_trends = data.copy()  # Create a copy of the data
+    data_with_trends['trend'] = labels  # Add the trend column to the copied data
 
-    # Example: Calculate the mean for numerical features for each cluster
-    cluster_characteristics = data_with_clusters.groupby('Cluster').mean()
+    # Example: Calculate the mean for numerical features for each trend
+    trend_characteristics = data_with_trends.groupby('trend').mean()
 
-    # Identifying top distinguishing features for one cluster as an example
-    top_features = cluster_characteristics.loc[0].sort_values(ascending=False)[:3].index.tolist()
-    #print("Top distinguishing features for Cluster 0:", top_features)
+    # Identifying top distinguishing features for one trend as an example
+    top_features = trend_characteristics.loc[1].sort_values(ascending=False)[:3].index.tolist()
+    #print("Top distinguishing features for trend 1:", top_features)
 
 
     # Ensure the figures directory exists if saving figures
@@ -278,19 +278,20 @@ def visualize_feature_relationships(data, labels, AI_response, features=None, sa
         os.makedirs(figures_dir, exist_ok=True)
 
     AI_response_fig={}
-    for cluster in sorted(data_with_clusters['Cluster'].unique()):
-        cluster_data = data_with_clusters[data_with_clusters['Cluster'] == cluster]
+    
+    for trend in sorted(data_with_trends['trend'].unique()):
+        trend_data = data_with_trends[data_with_trends['trend'] == trend]
         if features:
-            cluster_data = cluster_data[features + ['Cluster']]  # Select specified features and Cluster column
+            trend_data = trend_data[features + ['trend']]  # Select specified features and trend column
 
         # Correlation heatmap
         heatmap_fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(cluster_data.drop('Cluster', axis=1).corr(), annot=True, fmt=".2f", ax=ax, cmap="coolwarm")
-        plt.title(f"Feature Correlations in Cluster {cluster}")
+        sns.heatmap(trend_data.drop('trend', axis=1).corr(), annot=True, fmt=".2f", ax=ax, cmap="coolwarm")
+        plt.title(f"Feature Correlations in Trend {trend+1}")
 
-        AI_response_fig[heatmap_fig]=AI_response[cluster]
+        AI_response_fig[heatmap_fig]=AI_response[trend]
         if save_figures:
-            heatmap_path = f"{figures_dir}/heatmap_cluster_{cluster}.png"
+            heatmap_path = f"{figures_dir}/heatmap_trend_{trend}.png"
             heatmap_fig.savefig(heatmap_path)
             figures.append(heatmap_path)
             plt.close(heatmap_fig)

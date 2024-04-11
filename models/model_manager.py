@@ -36,19 +36,19 @@ def complete_analysis_pipeline(data, normalized_data):
     # Calculate silhouette score for each reduced data and find the best one
     for method, reduced_data in reduced_data_methods.items():
         # Temporarily apply KMeans for silhouette score calculation; adjust based on your criteria or data
-        #cluster_labels = KMeans(n_clusters=5, random_state=42).fit_predict(reduced_data)
-        cluster_labels = optimal_kmeans(reduced_data)
-        score = silhouette_score(reduced_data, cluster_labels)
+        #trend_labels = KMeans(n_trends=5, random_state=42).fit_predict(reduced_data)
+        trend_labels = optimal_kmeans(reduced_data)
+        score = silhouette_score(reduced_data, trend_labels)
         silhouette_scores[method] = score
         #print(f"{method} silhouette score: {score}")
     
     best_method = max(silhouette_scores, key=silhouette_scores.get)
     #print(f"Best dimensionality reduction method: {best_method} with a silhouette score of {silhouette_scores[best_method]}")
     
-    # Perform clustering on the best reduced data
+    # Perform trending on the best reduced data
     best_reduced_data = reduced_data_methods[best_method]
-    labels = choose_and_apply_clustering(best_reduced_data)
-    descriptions = generate_cluster_descriptions(data, labels)
+    labels = choose_and_apply_trending(best_reduced_data)
+    descriptions = generate_trend_descriptions(data, labels)
     for description in descriptions:
         continue
         #print(description)
@@ -61,96 +61,96 @@ def complete_analysis_pipeline(data, normalized_data):
     
 
 
-def generate_cluster_descriptions(df, cluster_labels, numeric_metric='var', diff_metric='mean'):
+def generate_trend_descriptions(df, trend_labels, numeric_metric='var', diff_metric='mean'):
     """
-    Generates descriptive summaries for each cluster in the dataset.
+    Generates descriptive summaries for each trend in the dataset.
 
     Parameters:
     - df: Pandas DataFrame containing the dataset.
-    - cluster_labels: Array-like structure containing cluster labels for each row in df.
+    - trend_labels: Array-like structure containing trend labels for each row in df.
     - numeric_metric: The statistical metric to use for describing standout numeric fields ('var' for variance, 'std' for standard deviation, etc.).
     - diff_metric: The metric to use for highlighting differences ('mean' or 'median').
 
     Returns:
-    - all_descriptions: A list of descriptive summaries for each cluster.
+    - all_descriptions: A list of descriptive summaries for each trend.
     """
-    df['Cluster'] = cluster_labels
+    df['trend'] = trend_labels
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
     categorical_cols = df.select_dtypes(exclude=np.number).columns.tolist()
-    numeric_cols.remove('Cluster')
+    numeric_cols.remove('trend')
 
     all_descriptions = []
 
-    for cluster_id in np.unique(cluster_labels):
-        cluster_data = df[df['Cluster'] == cluster_id]
-        other_clusters_data = df[df['Cluster'] != cluster_id]
+    for trend_id in np.unique(trend_labels):
+        trend_data = df[df['trend'] == trend_id]
+        other_trends_data = df[df['trend'] != trend_id]
 
         # Section 1: Standout Fields
-        standout_desc = f"Cluster {cluster_id} standout fields are "
+        standout_desc = f"trend {trend_id+1} standout fields are "
         standout_fields = []
 
         # Numeric: Based on specified metric
         if numeric_metric == 'var':
-            metric_values = cluster_data[numeric_cols].var()
+            metric_values = trend_data[numeric_cols].var()
         elif numeric_metric == 'std':
-            metric_values = cluster_data[numeric_cols].std()
+            metric_values = trend_data[numeric_cols].std()
         else:
             raise ValueError("Unsupported numeric_metric provided.")
         
         top_numeric = metric_values.nlargest(3)
         for field in top_numeric.index:
-            avg_val = cluster_data[field].mean()
+            avg_val = trend_data[field].mean()
             standout_fields.append(f"{field} (average: {avg_val:.2f})")
 
         # Categorical: Most significant based on frequency
         if categorical_cols:
             cat_diffs = {}
             for col in categorical_cols:
-                mode = cluster_data[col].mode()[0] if not cluster_data[col].mode().empty else 'N/A'
-                mode_freq = cluster_data[col].value_counts(normalize=True).get(mode, 0)
+                mode = trend_data[col].mode()[0] if not trend_data[col].mode().empty else 'N/A'
+                mode_freq = trend_data[col].value_counts(normalize=True).get(mode, 0)
                 cat_diffs[col] = mode_freq
             if cat_diffs:
                 top_cat = max(cat_diffs, key=cat_diffs.get)
-                top_mode = cluster_data[top_cat].mode()[0] if not cluster_data[top_cat].mode().empty else 'N/A'
+                top_mode = trend_data[top_cat].mode()[0] if not trend_data[top_cat].mode().empty else 'N/A'
                 standout_fields.append(f"{top_cat} (most common: {top_mode})")
 
         standout_desc += "; ".join(standout_fields) + "."
 
-        # Section 2: Differentiation from Other Clusters
-        diff_desc = f"\nHow Cluster {cluster_id} differs: "
+        # Section 2: Differentiation from Other trends
+        diff_desc = f"\nHow trend {trend_id+1} differs: "
         diff_fields = []
         for field in top_numeric.index:
-            cluster_avg = cluster_data[field].mean() if diff_metric == 'mean' else cluster_data[field].median()
-            other_avg = other_clusters_data[field].mean() if diff_metric == 'mean' else other_clusters_data[field].median()
-            difference = "higher" if cluster_avg > other_avg else "lower"
-            diff_val = abs(cluster_avg - other_avg)
-            diff_fields.append(f"{field} is {difference} than the average of other clusters by {diff_val:.2f}")
+            trend_avg = trend_data[field].mean() if diff_metric == 'mean' else trend_data[field].median()
+            other_avg = other_trends_data[field].mean() if diff_metric == 'mean' else other_trends_data[field].median()
+            difference = "higher" if trend_avg > other_avg else "lower"
+            diff_val = abs(trend_avg - other_avg)
+            diff_fields.append(f"{field} is {difference} than the average of other trends by {diff_val:.2f}")
 
         if categorical_cols and cat_diffs:
-            mode_freq_other_clusters = other_clusters_data[top_cat].value_counts(normalize=True).get(top_mode, 0)
-            freq_diff = cat_diffs[top_cat] - mode_freq_other_clusters
+            mode_freq_other_trends = other_trends_data[top_cat].value_counts(normalize=True).get(top_mode, 0)
+            freq_diff = cat_diffs[top_cat] - mode_freq_other_trends
             freq_desc = "more common" if freq_diff > 0 else "less common"
-            diff_fields.append(f"{top_mode} in {top_cat} is {freq_desc} compared to other clusters")
+            diff_fields.append(f"{top_mode} in {top_cat} is {freq_desc} compared to other trends")
 
         diff_desc += "; ".join(diff_fields) + "."
 
-        # Combine both sections for the cluster's description
-        cluster_description = standout_desc + diff_desc
-        all_descriptions.append(cluster_description)
+        # Combine both sections for the trend's description
+        trend_description = standout_desc + diff_desc
+        all_descriptions.append(trend_description)
 
     return all_descriptions
 
 # Example usage
 # df = Your DataFrame
-# cluster_labels = Your cluster labels
-# descriptions = generate_cluster_descriptions(df, cluster_labels, 'var', 'mean')
+# trend_labels = Your trend labels
+# descriptions = generate_trend_descriptions(df, trend_labels, 'var', 'mean')
 # print(descriptions)
 
 
 
-def choose_and_apply_clustering(data):
+def choose_and_apply_trending(data):
     # Example simplistic criteria: Dataset size
-    if len(data) < 1:  # Assuming larger datasets might have more complex cluster shapes
+    if len(data) < 1:  # Assuming larger datasets might have more complex trend shapes
         print("Using DBSCAN...")
         labels = optimal_dbscan(data)
     else:

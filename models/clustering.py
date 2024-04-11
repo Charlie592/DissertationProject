@@ -1,4 +1,4 @@
-# clustering.py
+# trending.py
 
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import StandardScaler
@@ -15,17 +15,17 @@ def optimal_kmeans(data, max_clusters=5):
         kmeans.fit(data)
         wcss.append(kmeans.inertia_)
 
-    # Automatically find the elbow point, limited to the range [1, max_clusters]
+    # Automatically find the elbow point, limited to the range [1, max_trends]
     kn = KneeLocator(range(1, max_clusters + 1), wcss, curve='convex', direction='decreasing')
     n_clusters_optimal = kn.knee
-    print(f"Optimal number of clusters: {n_clusters_optimal}")
+    print(f"Optimal number of trends: {n_clusters_optimal}")
 
     return apply_kmeans(data, n_clusters=n_clusters_optimal)
 
 def apply_kmeans(data, n_clusters=3):
     if n_clusters is None or n_clusters < 1:
         n_clusters = 1
-    # Perform K-means clustering with specified number of clusters
+    # Perform K-means trending with specified number of trends
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     labels = kmeans.fit_predict(data)
     return labels
@@ -46,7 +46,7 @@ def optimal_dbscan(data):
     return apply_dbscan(data, eps=eps_optimal, min_samples=9)
 
 def apply_dbscan(data, eps=0.5, min_samples=5):
-    # Perform DBSCAN clustering with specified eps and min_samples values
+    # Perform DBSCAN trending with specified eps and min_samples values
     dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     labels = dbscan.fit_predict(data)
     return labels
