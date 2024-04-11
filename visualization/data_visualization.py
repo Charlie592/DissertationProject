@@ -181,40 +181,55 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
 import pandas as pd
 import altair as alt
 
-def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
+import altair as alt
+import pandas as pd
+
+def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, aggregate='daily'):
     if not isinstance(data, pd.DataFrame):
         raise ValueError("Data must be a pandas DataFrame")
     
-    # Initialize an empty vertical chart
-    vconcat_charts = alt.VConcatChart(vconcat=[])
+    # Initialize an empty list for charts
+    charts = []
     
     for time_col in time_date_cols:
-        if time_col not in data.columns:
-            continue  # Skip if the column does not exist in the DataFrame
-        
-        # Convert the time column to datetime if not already
-        data[time_col] = pd.to_datetime(data[time_col], errors='coerce')  # 'coerce' will NaT for invalid dates
-        data = data.dropna(subset=[time_col])  # Drop rows with NaT (invalid dates)
-        data = data.sort_values(by=time_col)
+        # Convert the time column to datetime if not already and drop NaT values
+        data[time_col] = pd.to_datetime(data[time_col], errors='coerce')
+        valid_data = data.dropna(subset=[time_col]).copy()  # Copy to avoid SettingWithCopyWarning
 
-        # Loop through each numerical column to create a separate line chart
+        # Set the index to the time_col for resampling
+        valid_data.set_index(time_col, inplace=True)
+        valid_data.sort_index(inplace=True)
+
+        # Resample if aggregation is specified
+        if aggregate:
+            if aggregate == 'daily':
+                valid_data = valid_data.resample('D').mean().reset_index()
+            elif aggregate == 'weekly':
+                valid_data = valid_data.resample('W').mean().reset_index()
+            elif aggregate == 'monthly':
+                valid_data = valid_data.resample('M').mean().reset_index()
+            # More resampling options can be added as needed
+
+        # Create line charts for each numerical column
         for num_col in numerical_cols:
-            # Create the line chart
-            chart = alt.Chart(data).mark_line(point=True).encode(
-                x=alt.X(time_col, title='Date', axis=alt.Axis(labelAngle=-45)),
-                y=alt.Y(num_col, title=num_col),
-                tooltip=[alt.Tooltip(time_col), alt.Tooltip(num_col)]
-            ).properties(
-                title=f'{num_col} over time'
-            ).interactive()
-            
-            vconcat_charts &= chart  # Concatenate charts vertically
+            if pd.api.types.is_numeric_dtype(valid_data[num_col]):
+                chart = alt.Chart(valid_data.reset_index()).mark_line(point=True).encode(
+                    x=alt.X(time_col, title='Date', axis=alt.Axis(labelAngle=-45)),
+                    y=alt.Y(num_col, title=num_col),
+                    tooltip=[alt.Tooltip(time_col), alt.Tooltip(num_col)]
+                ).properties(
+                    title=f'{num_col} over time' if not title else title
+                ).interactive()
+                
+                charts.append(chart)
 
-    if title:
-        # Add title to the whole concatenated chart
-        vconcat_charts = vconcat_charts.properties(title=title)
+    # Combine all the individual charts into a single chart
+    combined_chart = alt.vconcat(*charts) if charts else alt.value('No time series data available for visualization')
 
-    return vconcat_charts
+    return combined_chart
+
+# Usage example:
+# time_series_chart = plot_time_series_charts(df, ['time_column'], ['numerical_column_1', 'numerical_column_2'], aggregate='weekly')
 
 
 

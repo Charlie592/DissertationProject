@@ -15,17 +15,19 @@ import re
 
 def preprocess_data(data, handle_missing_values):
 
-    print(data.head(10))
     data = drop_id_columns(data)
     financial_cols = detect_financial_columns(data)
-    time_date_cols, converted_data = detect_time_date_columns(data)
+    time_date_cols, converted_data, converted_to_normalize = detect_time_date_columns(data)
     data = converted_data
     print("Time/Date columns:", time_date_cols)
+    print(data.dtypes)
     print(data.head(10))
+    print(converted_to_normalize.dtypes)
     categorical_cols = data.select_dtypes(include=['object']).columns
     #print("Categorical columns:", categorical_cols)
 
-    normalized_data = data.copy()
+    normalized_data = converted_to_normalize.copy()
+    print("Normalized data:\n", normalized_data.head(10))
 
     if handle_missing_values == False:
         print("Dropping rows with missing values.")
@@ -97,6 +99,7 @@ def handle_missing_values_with_tpot(data):
 
 def detect_time_date_columns(data):
     time_date_cols = []
+    data2norm = data.copy()
     date_format_YYYY = {
         "%Y-%m-%d": r'\d{4}\D\d{1,2}\D\d{1,2}'  # YYYY-M-D or YYYY-MM-DD
     }
@@ -116,20 +119,34 @@ def detect_time_date_columns(data):
     def parse_time(time_str):
         for fmt in ('%H:%M', '%I:%M:%S %p', '%H:%M:%S'):
             try:
+                # Parse the time string using the given format
+                parsed_time = pd.to_datetime(time_str, format=fmt)
+                # Return only the hour part as a string
+                return str(parsed_time.hour).zfill(2)  # zfill(2) ensures a two-digit format, like '02', '11'
+            except ValueError:
+                # If parsing fails, continue to the next format
+                continue
+        return None 
+
+    def parse_time2norm(time_str):
+        for fmt in ('%H:%M', '%I:%M:%S %p', '%H:%M:%S'):
+            try:
                 # Return only the time part
                 return pd.to_datetime(time_str, format=fmt).time()
             except ValueError:
                 continue
         return None # or raise an exception
+    
 
     for col in data.columns:
         sample_values = data[col].dropna().astype(str).sample(min(100, len(data[col])))
         # Flag to track if column has been processed as date or time
         processed_as_date_or_time = False
-        
+
         if any(re.search(pattern, value) for pattern in date_format_YYYY.values() for value in sample_values):
             # Process as date
-            data[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce').dt.strftime('%Y-%m-%d')
+            data[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce')
+            data2norm[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce').dt.strftime('%Y-%m-%d')
             # Mark column as processed
             processed_as_date_or_time = True
             time_date_cols.append(f'{col}_date')
@@ -142,14 +159,18 @@ def detect_time_date_columns(data):
                 inferred_format = infer_date_format(sample_dates[0])
                 if inferred_format:
                     # Process according to the inferred format
-                    data[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce').dt.strftime('%Y-%m-%d')
+                    data[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce')
+                    data2norm[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce').dt.strftime('%Y-%m-%d')
                     # Mark column as processed
                     processed_as_date_or_time = True
                     time_date_cols.append(f'{col}_date')
+
+
         
         if any(re.search(time_pattern, value) for value in sample_values):
             # Process as time
             data[f'{col}_time'] = data[col].apply(parse_time)
+            data2norm[f'{col}_time'] = data[col].apply(parse_time2norm)
             # Mark column as processed
             processed_as_date_or_time = True
             time_date_cols.append(f'{col}_time')
@@ -157,10 +178,12 @@ def detect_time_date_columns(data):
         # If the column was processed as date or time, drop the original column
         if processed_as_date_or_time:
             data.drop(col, axis=1, inplace=True)
+            data2norm.drop(col, axis=1, inplace=True)
 
 
     # Assuming the function should return the modified DataFrame and the list of new time/date related columns
-    return time_date_cols, data
+    return time_date_cols, data, data2norm
+
 
 
 import pandas as pd
