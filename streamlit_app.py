@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
 from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships
-from models.predictor import make_predictions
 import pandas as pd
 
 # Initialize session state for processed and normalized data
@@ -43,7 +42,7 @@ if st.button('Process Data'):
 # Sidebar navigation and content
 if st.session_state['show_visualizations']:
     st.sidebar.header('Visualizations')
-    page_options = ["Analysis Results", "Explore Data", "Predictions"]
+    page_options = ["Analysis Results", "Explore Data"]
     page = st.sidebar.selectbox('Select a page', page_options, key='page_selection')
 
     if page == "Analysis Results":
@@ -198,96 +197,6 @@ if st.session_state['show_visualizations']:
                     y='count()'
                 )
                 st.altair_chart(chart, use_container_width=True)
-
-    elif page == 'Predictions':
-        st.write('Predictions')
-
-        if 'normalized_data' in st.session_state and 'processed_data' in st.session_state:
-            st.sidebar.header("Prediction Options")
-            
-            # Task Type Selection
-            st.sidebar.header("Task Type Selection")
-            task_options = ['Regression', 'Classification']
-            selected_task = st.sidebar.radio('Choose the type of task', task_options, key='task_selection')
-
-            # Dynamically set model options based on the selected task type
-            if selected_task == 'Regression':
-                model_options = ['Linear Regression', 'Random Forest', 'Support Vector Machine']
-            elif selected_task == 'Classification':
-                model_options = ['Random Forest', 'Support Vector Machine']
-            selected_model = st.sidebar.selectbox('Choose a model for prediction', model_options, key='model_selection')
-            
-            # Introduce Model Parameter UI Elements based on the selected model
-            model_params = {}
-            if selected_model == 'Random Forest':
-                n_estimators = st.sidebar.slider('Number of trees (n_estimators)', 10, 500, 100, 10, key='n_estimators')
-                max_depth = st.sidebar.slider('Maximum depth of trees (max_depth)', 1, 32, 5, 1, key='max_depth')
-                model_params = {'n_estimators': n_estimators, 'max_depth': max_depth}
-            elif selected_model == 'Support Vector Machine':
-                C = st.sidebar.slider('Penalty parameter C', 0.01, 10.0, 1.0, 0.01, key='C')
-                gamma = st.sidebar.selectbox('Kernel coefficient (gamma)', ['scale', 'auto'], index=0, key='gamma')
-                model_params = {'C': C, 'gamma': gamma}
-                
-            # Target Column Selection with Filtering based on Task Type
-            if selected_task == 'Classification':
-                target_columns = [col for col in st.session_state['processed_data'].columns if st.session_state['processed_data'][col].dtype == 'object']
-            else:
-                target_columns = st.session_state['normalized_data'].columns.tolist()
-
-            target_column = st.sidebar.selectbox('Select the target column for prediction', target_columns, key='target_column')
-            
-            # Features Selection
-            feature_columns = [col for col in st.session_state['normalized_data'].columns if col != target_column]
-            selected_features = st.sidebar.multiselect('Select features to include in the model', feature_columns, default=feature_columns, key='selected_features')
-
-            # Ensure that features are selected before proceeding
-            if selected_features:
-                # Correct approach to ensure features are numeric and target is categorical for classification
-                if selected_task == 'Classification':
-                    features_data = st.session_state['normalized_data'][selected_features]
-                    target_data = st.session_state['processed_data'][target_column]
-                    combined_data = features_data.copy()
-                    combined_data[target_column] = target_data.values  # Directly assigning the target column values
-
-                    predictions_df, metrics, shap_summary_df = make_predictions(
-                        combined_data, 
-                        target_column, 
-                        selected_features,
-                        selected_model,
-                        selected_task,
-                        model_params=model_params
-                    )
-                elif selected_task == 'Regression':
-                    # For regression, the approach remains unchanged
-                    predictions_df, metrics, shap_summary_df = make_predictions(
-                        st.session_state['normalized_data'], 
-                        target_column, 
-                        selected_features,
-                        selected_model,
-                        selected_task,
-                        model_params=model_params
-                    )
-                
-                # Display predictions and metrics
-                st.write(predictions_df)
-                for metric, value in metrics.items():
-                    st.write(f"{metric}: {value}")
-
-                if 'shap_summary_df' in locals():  # Check if shap_summary_df is defined
-                    st.subheader("Feature Importance Based on SHAP Values")
-
-                    # Sort the DataFrame for better visualization
-                    shap_summary_df_sorted = shap_summary_df.sort_values(by='SHAP Value', ascending=True)
-
-                    # Create a bar chart
-                    plt.figure(figsize=(10, len(shap_summary_df_sorted) / 2))  # Dynamic figure size based on number of features
-                    plt.barh(shap_summary_df_sorted.index, shap_summary_df_sorted['SHAP Value'], color='skyblue')
-                    plt.xlabel('Mean Absolute SHAP Value')
-                    plt.ylabel('Features')
-                    plt.title('Feature Importance Based on Mean Absolute SHAP Values')
-
-                    # Display the plot in Streamlit
-                    st.pyplot(plt)
 
             else:
                 st.warning("Please select at least one feature to include in the model.")
