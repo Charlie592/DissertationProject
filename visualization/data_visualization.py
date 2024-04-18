@@ -379,3 +379,20 @@ def visualize_feature_relationships(data, labels, AI_response, features=None, sa
         
 
     return figures, AI_response_fig
+
+
+def configure_chart(chart):
+    return chart.configure(
+        background='white',
+        view=alt.ViewConfig(stroke='transparent')
+    ).configure_axis(
+        labelColor='black',
+        titleColor='black',
+        gridColor='black',
+        domainColor='black',
+        tickColor='black'
+    ).configure_title(
+        color='black'
+    ).properties(
+        padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+    )

@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
-from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships
+from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships, configure_chart
 import pandas as pd
 
 # Initialize session state for processed and normalized data
@@ -156,6 +156,7 @@ if st.session_state['show_visualizations']:
                     x=x_axis,
                     y=y_axis
                 )
+                chart = configure_chart(chart)
                 st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
             # Streamlit app code
@@ -176,18 +177,24 @@ if st.session_state['show_visualizations']:
                     chart = create_scatter_plot(data, x_axis, y_axis)
 
                 # Display the chart in the placeholder
+                chart = configure_chart(chart)
                 chart_placeholder.altair_chart(chart, use_container_width=True)
 
             # Box plot
             elif selected_plot == "Box plot":
                 x_axis = st.sidebar.selectbox("Select category axis", column_options, key='x_axis_box')
                 y_axis = st.sidebar.selectbox("Select value axis", column_options, key='y_axis_box')
-                chart = alt.Chart(data).mark_boxplot().encode(
-                    x=x_axis,
-                    y=y_axis
-                )
-                st.altair_chart(chart, use_container_width=True)  # This line displays the chart
 
+                # Ensure the y-axis is treated as a quantitative variable
+                if data[y_axis].dtype not in ['float64', 'int64']:
+                    st.error(f"The selected value axis '{y_axis}' is not continuous.")
+                else:
+                    chart = alt.Chart(data).mark_boxplot().encode(
+                        x=x_axis,
+                        y=y_axis
+                    )
+                    chart = configure_chart(chart)
+                    st.altair_chart(chart, use_container_width=True) 
             # Histogram 
             elif selected_plot == "Histogram":
                 column = st.sidebar.selectbox("Select a column for histogram", column_options, key='hist_column')
@@ -196,6 +203,7 @@ if st.session_state['show_visualizations']:
                     alt.X(column, bin=alt.Bin(maxbins=bins)),
                     y='count()'
                 )
+                chart = configure_chart(chart)
                 st.altair_chart(chart, use_container_width=True)
 
             else:
