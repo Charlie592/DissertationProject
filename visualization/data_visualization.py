@@ -147,41 +147,40 @@ import altair as alt
 
 import altair as alt
 
-def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None, N=30):
-    # Start with an empty list for all rows of charts and a dictionary to keep track of unique titles
-    rows_of_charts = []
-    chart_titles = {}
+import altair as alt
 
-    # Variable to keep track of charts in the current row
-    row_charts = []
+import altair as alt
+
+def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None, N=30):
+    # Create a dictionary to store charts with their respective sum values
+    charts_with_sums = {}
 
     for financial_col in financial_cols:
         for cat_col in categorical_cols:
             if cat_col == financial_col or cat_col not in data.columns:
                 continue
 
-            # Sort the data by financial column and take top N categories
-            top_categories_data = data.groupby(cat_col)[financial_col].sum().reset_index().sort_values(financial_col, ascending=False).head(N)
-            top_categories = top_categories_data[cat_col].tolist()
+            # Aggregate the data
+            aggregated_data = (data.groupby(cat_col)[financial_col]
+                               .sum()
+                               .reset_index()
+                               .sort_values(financial_col, ascending=False))
 
-            # Add an 'Other' category if there are more than N categories
+            # Add 'Other' category if needed
             if data[cat_col].nunique() > N:
-                top_categories.append('Other')
-                data.loc[~data[cat_col].isin(top_categories_data[cat_col]), cat_col] = 'Other'
+                aggregated_data = aggregated_data.head(N)
+                aggregated_data.loc[aggregated_data.index[-1], cat_col] = 'Other'
+                data.loc[~data[cat_col].isin(aggregated_data[cat_col]), cat_col] = 'Other'
+                aggregated_data.at[aggregated_data.index[-1], financial_col] = data.loc[data[cat_col] == 'Other', financial_col].sum()
 
-            # Re-aggregate data after filtering to top N categories
-            aggregated_data = data.loc[data[cat_col].isin(top_categories)].groupby(cat_col).agg({financial_col: 'sum'}).reset_index()
-
-            # Create the title for the chart and check if it's already been created
+            # Create the chart title
             chart_title = f'Sum of {financial_col} by {cat_col}'
-            if chart_title in chart_titles:
-                continue  # Skip this chart as it's a duplicate
 
             # Decide between bar or pie chart based on the number of categories
             chart = alt.Chart(aggregated_data)
-            if len(top_categories) <= N:
+            if len(aggregated_data) <= N:
                 chart = chart.mark_bar().encode(
-                    x=alt.X(f'{cat_col}:N', title=cat_col, sort=None),
+                    x=alt.X(f'{cat_col}:N', title=cat_col, sort='-y'),
                     y=alt.Y(f'{financial_col}:Q', title=f'Sum of {financial_col}'),
                     color=alt.Color(f'{cat_col}:N', legend=None),
                     tooltip=[alt.Tooltip(f'{cat_col}:N'), alt.Tooltip(f'{financial_col}:Q')]
@@ -193,18 +192,15 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
                     tooltip=[alt.Tooltip(field=cat_col, type='nominal'), alt.Tooltip(field=financial_col, type='quantitative')]
                 )
 
-            chart = chart.properties(title=chart_title)
-            chart_titles[chart_title] = True  # Mark this title as added
-            row_charts.append(chart)
+            # Store the chart with the total sum
+            total_sum = aggregated_data[financial_col].sum()
+            charts_with_sums[chart_title] = (total_sum, chart.properties(title=chart_title))
 
-            # When we have 3 charts in a row, create a new row
-            if len(row_charts) == 3:
-                rows_of_charts.append(row_charts)
-                row_charts = []
+    # Sort charts by their total sum in descending order
+    sorted_charts = [chart for _, chart in sorted(charts_with_sums.values(), key=lambda x: x[0], reverse=True)]
 
-    # Add the last row if it has less than 3 charts
-    if row_charts:
-        rows_of_charts.append(row_charts)
+    # Group the sorted charts into rows of three
+    rows_of_charts = [sorted_charts[i:i + 3] for i in range(0, len(sorted_charts), 3)]
 
     # Concatenate all the rows of charts
     vconcat_charts = alt.VConcatChart(vconcat=[
