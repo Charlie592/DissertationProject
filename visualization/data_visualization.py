@@ -13,7 +13,12 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
+import altair as alt
+import numpy as np
+
 def plot_distributions_altair(data, plot_type='boxplot', title=None):
+
+    data = data.drop([col for col in data.columns if 'trend' in col], axis=1)
     # Select only numeric columns for plotting
     numeric_columns = data.select_dtypes(include=[np.number]).columns
     if plot_type not in {'boxplot', 'kdeplot'}:
@@ -36,24 +41,35 @@ def plot_distributions_altair(data, plot_type='boxplot', title=None):
             )
         charts.append(chart)
     
-    # Combine charts into a single visualization, with a set number per row
-    combined = alt.hconcat(*[alt.vconcat(*charts[i:i+4]) for i in range(0, len(charts), 3)])
+    # Combine charts into a single visualization, with 1 chart per row
+    combined = alt.vconcat(*charts, spacing=30)  # Adding spacing between rows
 
     if title:
         combined = combined.properties(title=title)
-    
-    # Configure the chart with a dark theme
-    combined = combined.configure(
+
+    # Configure the chart with a light theme and add padding
+    combined = combined.configure_view(
+        stroke=None,  # Removes the border around each view
+        continuousWidth=400,  # Adjust width as needed
+        continuousHeight=100,  # Adjust height as needed
+        strokeWidth=0
+    ).configure(
+        background='white',
         axis=alt.AxisConfig(
-            labelColor='white',
-            titleColor='white',
-            gridColor='white',
-            domainColor='white',
-            tickColor='white',
-            
+            labelColor='black',
+            titleColor='black',
+            gridColor='lightgrey',
+            domainColor='black',
+            tickColor='black',
         ),
-        title=alt.TitleConfig(color='white')
+        title=alt.TitleConfig(color='black')
+    ).configure_view(
+        strokeWidth=0,  # Remove the stroke width around the view area
+        step=100  # Increase step to allocate more space for each chart
     )
+
+    # Adjust padding around the charts
+    combined = combined.properties(padding={"left": 10, "right": 10, "top": 10, "bottom": 10})
 
     return combined  # Return the combined chart object
 
@@ -73,17 +89,14 @@ def plot_categorical_barcharts(data, categorical_cols, N=20, min_count=3):
 
         # Check the actual number of categories
         actual_categories_count = min(len(counts), N)
-        title_text = f"Top {actual_categories_count} {col}" if actual_categories_count < N else f"Top {N} {col}"
+        title_text = f"Top {actual_categories_count} {col}" if actual_categories_count < N else f"All {col} Categories"
 
         # If there are more than N categories, include "Other"
         if len(counts) > N:
             top_counts = counts.head(N-1)
             other_count = counts['count'][N-1:].sum()
             top_counts = top_counts.append({col: 'Other', 'count': other_count}, ignore_index=True)
-            # Create a sort_key that places 'Other' at the end
-            top_counts['sort_key'] = range(len(top_counts) - 1, -1, -1)
-            top_counts.loc[top_counts[col] == 'Other', 'sort_key'] = -1
-            top_counts = top_counts.sort_values('sort_key', ascending=False).drop(columns='sort_key')
+            top_counts = top_counts.sort_values(by='count', ascending=False)
         else:
             top_counts = counts
 
@@ -94,21 +107,38 @@ def plot_categorical_barcharts(data, categorical_cols, N=20, min_count=3):
                 color=alt.Color(f"{col}:N", scale=alt.Scale(scheme='category20'), legend=None),
                 tooltip=[alt.Tooltip(f'{col}:N', title='Category'), alt.Tooltip('count:Q', title='Count')]
             ).properties(
+                width=200,  # Control the width of individual charts
+                height=200,  # Control the height of individual charts
                 title=title_text
             )
-
             individual_charts.append(chart)
 
-    if individual_charts:
-        combined = alt.hconcat(*individual_charts).resolve_scale(
-            x='independent',
-            y='independent'
-        )
-    else:
-        combined = None
+    # Combine individual charts into rows with 3 charts each
+    rows_of_charts = [alt.hconcat(*individual_charts[i:i+3], spacing=20) for i in range(0, len(individual_charts), 3)]
+
+    # Combine rows of charts into a single visualization
+    combined = alt.vconcat(*rows_of_charts, spacing=20)
+
+    # Configure the combined chart with a light theme, making the text and lines black
+    combined = combined.configure(
+        background='white',
+        view=alt.ViewConfig(stroke='transparent')
+    ).configure_axis(
+        labelColor='black',
+        titleColor='black',
+        gridColor='black',
+        domainColor='black',
+        tickColor='black'
+    ).configure_title(
+        color='black'
+    ).properties(
+        padding={"left": 10, "right": 10, "top": 10, "bottom": 10}  # Add padding around the charts
+    ).resolve_scale(
+        x='independent', 
+        y='independent'
+    )
 
     return combined
-
 
 
 import altair as alt
@@ -118,12 +148,14 @@ import altair as alt
 import altair as alt
 
 def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None, N=30):
-    # Start with an empty horizontal chart
-    hconcat_charts = alt.HConcatChart(hconcat=[])
+    # Start with an empty list for all rows of charts and a dictionary to keep track of unique titles
+    rows_of_charts = []
+    chart_titles = {}
+
+    # Variable to keep track of charts in the current row
+    row_charts = []
 
     for financial_col in financial_cols:
-        individual_charts = []
-
         for cat_col in categorical_cols:
             if cat_col == financial_col or cat_col not in data.columns:
                 continue
@@ -140,49 +172,76 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
             # Re-aggregate data after filtering to top N categories
             aggregated_data = data.loc[data[cat_col].isin(top_categories)].groupby(cat_col).agg({financial_col: 'sum'}).reset_index()
 
-            # Chart creation logic for either bar or pie chart based on number of categories
+            # Create the title for the chart and check if it's already been created
+            chart_title = f'Sum of {financial_col} by {cat_col}'
+            if chart_title in chart_titles:
+                continue  # Skip this chart as it's a duplicate
+
+            # Decide between bar or pie chart based on the number of categories
+            chart = alt.Chart(aggregated_data)
             if len(top_categories) <= N:
-                chart = alt.Chart(aggregated_data).mark_bar().encode(
+                chart = chart.mark_bar().encode(
                     x=alt.X(f'{cat_col}:N', title=cat_col, sort=None),
                     y=alt.Y(f'{financial_col}:Q', title=f'Sum of {financial_col}'),
                     color=alt.Color(f'{cat_col}:N', legend=None),
                     tooltip=[alt.Tooltip(f'{cat_col}:N'), alt.Tooltip(f'{financial_col}:Q')]
-                ).properties(
-                    title=f'Sum of {financial_col} by {cat_col}'
                 )
             else:
-                chart = alt.Chart(aggregated_data).mark_arc().encode(
+                chart = chart.mark_arc().encode(
                     theta=alt.Theta(field=financial_col, type='quantitative'),
                     color=alt.Color(field=cat_col, type='nominal'),
                     tooltip=[alt.Tooltip(field=cat_col, type='nominal'), alt.Tooltip(field=financial_col, type='quantitative')]
-                ).properties(
-                    title=f'Distribution of {financial_col}'
                 )
 
-                # Add legend only for the pie chart
-                if len(individual_charts) == 0:
-                    legend = alt.Legend(title=cat_col, orient='bottom')
-                    chart = chart.configure_legend(legend)
+            chart = chart.properties(title=chart_title)
+            chart_titles[chart_title] = True  # Mark this title as added
+            row_charts.append(chart)
 
-            individual_charts.append(chart)
+            # When we have 3 charts in a row, create a new row
+            if len(row_charts) == 3:
+                rows_of_charts.append(row_charts)
+                row_charts = []
 
-        # Combine and concatenate the individual charts
-        if individual_charts:
-            combined_charts_for_col = alt.hconcat(*individual_charts).resolve_scale(color='independent')
-            hconcat_charts |= combined_charts_for_col
+    # Add the last row if it has less than 3 charts
+    if row_charts:
+        rows_of_charts.append(row_charts)
+
+    # Concatenate all the rows of charts
+    vconcat_charts = alt.VConcatChart(vconcat=[
+        alt.HConcatChart(hconcat=row, spacing=10) for row in rows_of_charts
+    ])
 
     if title:
-        hconcat_charts = hconcat_charts.properties(title=title)
+        vconcat_charts = vconcat_charts.properties(title=title)
 
-    return hconcat_charts
+    # Configure the final chart's appearance and layout
+    vconcat_charts = vconcat_charts.configure(
+        background='white',
+        view=alt.ViewConfig(stroke='transparent')
+    ).configure_axis(
+        labelColor='black',
+        titleColor='black',
+        gridColor='black',
+        domainColor='black',
+        tickColor='black'
+    ).configure_title(
+        color='black'
+    ).properties(
+        padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+    ).resolve_scale(
+        x='independent', 
+        y='independent'
+    )
+
+    return vconcat_charts
 
 
 
 import pandas as pd
 import altair as alt
 
-import altair as alt
 import pandas as pd
+import altair as alt
 
 def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, aggregate='daily'):
     if not isinstance(data, pd.DataFrame):
@@ -213,24 +272,47 @@ def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, ag
         # Create line charts for each numerical column
         for num_col in numerical_cols:
             if pd.api.types.is_numeric_dtype(valid_data[num_col]):
-                chart = alt.Chart(valid_data.reset_index()).mark_line(point=True).encode(
+                chart = alt.Chart(valid_data).mark_line(point=True).encode(
                     x=alt.X(time_col, title='Date', axis=alt.Axis(labelAngle=-45)),
                     y=alt.Y(num_col, title=num_col),
-                    tooltip=[alt.Tooltip(time_col), alt.Tooltip(num_col)]
+                    tooltip=[alt.Tooltip(time_col, title='Date'), alt.Tooltip(num_col, title=num_col)]
                 ).properties(
-                    title=f'{num_col} over time' if not title else title
-                ).interactive()
+                    title=f'{num_col} over time' if not title else title,
+                    width=300,  # Adjust the width to fit two charts per row
+                    height=150  # Adjust the height as needed
+                )
                 
                 charts.append(chart)
 
-    # Combine all the individual charts into a single chart
-    combined_chart = alt.vconcat(*charts) if charts else alt.value('No time series data available for visualization')
+    # Combine individual charts into rows with 2 charts each
+    rows_of_charts = [alt.hconcat(*charts[i:i+2], spacing=20).resolve_scale(
+        x='independent', y='independent'
+    ) for i in range(0, len(charts), 2)]
+
+    # Combine rows of charts into a single visualization
+    combined_chart = alt.vconcat(*rows_of_charts, spacing=20) if rows_of_charts else alt.value('No time series data available for visualization')
+    
+    # Configure the combined chart with a light theme and make text and lines black
+    combined_chart = combined_chart.configure(
+        background='white'
+    ).configure_axis(
+        labelColor='black',
+        titleColor='black',
+        gridColor='black',
+        domainColor='black',
+        tickColor='black'
+    ).configure_title(
+        color='black'
+    ).configure_view(
+        stroke='transparent'
+    ).properties(
+        padding={"left": 10, "right": 30, "top": 10, "bottom": 10}  # Add padding around the charts
+    )
 
     return combined_chart
 
 # Usage example:
 # time_series_chart = plot_time_series_charts(df, ['time_column'], ['numerical_column_1', 'numerical_column_2'], aggregate='weekly')
-
 
 
 def create_scatter_plot(data, x_col, y_col):
