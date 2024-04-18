@@ -62,7 +62,7 @@ def preprocess_data(data, handle_missing_values):
     else:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
         normalized_data = normalize_data(normalized_data)
-        
+    
     return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
 def detect_financial_columns(data):
@@ -143,28 +143,30 @@ def detect_time_date_columns(data):
         # Flag to track if column has been processed as date or time
         processed_as_date_or_time = False
 
+        # Check if any sample value matches the YYYY date format
         if any(re.search(pattern, value) for pattern in date_format_YYYY.values() for value in sample_values):
-            # Process as date
+            # Process the column as a date
             data[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce')
             data2norm[f'{col}_date'] = pd.to_datetime(data[col], format='%Y-%m-%d', errors='coerce').dt.strftime('%Y-%m-%d')
-            # Mark column as processed
+            # Mark the column as processed
             processed_as_date_or_time = True
             time_date_cols.append(f'{col}_date')
             
+        # Check if any sample value matches any of the other date formats
         elif any(re.search(pattern, value) for pattern in date_formats.values() for value in sample_values):
             # Further processing for other date formats
             sample_dates = [value for value in sample_values if any(re.search(date_formats[fmt], value) for fmt in date_formats)]
             
             if sample_dates:
+                # Infer the date format based on the first sample date
                 inferred_format = infer_date_format(sample_dates[0])
                 if inferred_format:
-                    # Process according to the inferred format
+                    # Process the column according to the inferred format
                     data[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce')
                     data2norm[f'{col}_date'] = pd.to_datetime(data[col], format=inferred_format, errors='coerce').dt.strftime('%Y-%m-%d')
-                    # Mark column as processed
+                    # Mark the column as processed
                     processed_as_date_or_time = True
                     time_date_cols.append(f'{col}_date')
-
 
         
         if any(re.search(time_pattern, value) for value in sample_values):
@@ -277,25 +279,3 @@ def normalize_data(normalized_data):
     #print("Normalized data:\n", normalized_data.head())
     
     return normalized_data
-
-
-def remove_outliers(data):
-    """
-    Remove outliers from numerical columns using IQR method.
-    
-    Parameters:
-    - data (DataFrame): The DataFrame to clean.
-    
-    Returns:
-    - DataFrame: DataFrame with outliers removed.
-    """
-    numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
-    for col in numerical_cols:
-        Q1 = data[col].quantile(0.25)
-        Q3 = data[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-        data = data[(data[col] >= lower_bound) & (data[col] <= upper_bound)]
-    return data
-
