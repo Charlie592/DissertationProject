@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from main import process_file
 import altair as alt
-from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships, configure_chart
+from visualization.data_visualization import plot_financial_barcharts, plot_categorical_barcharts, plot_distributions_altair, create_scatter_plot, create_scatter_plot_with_line, plot_time_series_charts, visualize_feature_relationships, configure_chart, download_chart, save_figures_to_pdf
 import pandas as pd
 
 # Initialize session state for processed and normalized data
@@ -14,8 +14,11 @@ if 'show_visualizations' not in st.session_state:
 
 # Main page layout
 st.subheader('AI-driven Data Visualization: Revolutionizing Data Analysis through Automation')
-uploaded_file = st.file_uploader('Upload your dataset', type=['csv', 'xlsx', 'json', 'txt'])
-impute_missing_values = st.checkbox('Impute missing values', key='impute_missing_key')
+uploaded_file = st.file_uploader('Upload your dataset', type=['csv', 'xlsx', 'json', 'txt'], help='Upload a dataset in CSV, XLSX, JSON, or TXT format to begin the analysis process. The uploaded dataset will be processed to generate visualizations and insights that aid in understanding the data dynamics.')
+impute_missing_values = st.checkbox('Impute missing values', key='impute_missing_key', help='Impute missing values by replacing them with the mean, median, or mode of the respective column. This step ensures that the dataset is complete and ready for analysis. Missing values can skew the results and hinder the accuracy of the analysis. By imputing these values, we ensure that the dataset is robust and reliable for further processing.')
+
+
+
 
 # Process Data button
 if st.button('Process Data'):
@@ -74,14 +77,24 @@ if st.session_state['show_visualizations']:
                 # Code for displaying general analysis results goes here - Taken out to save tokens
 
                 if 'processed_data' in st.session_state:
-                    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
-                    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
+                    processed_data_data = pd.DataFrame(st.session_state['processed_data'])
+                    labels = st.session_state['labels']
                     
-                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
+                    figures, AI_response_fig = visualize_feature_relationships(processed_data_data, labels, st.session_state['AI_response'])
+                    ai_responses = []
                     for fig in figures:
-                        st.pyplot(fig)
-                        st.markdown(AI_response_fig[fig], unsafe_allow_html=True)
-                        
+                        st.pyplot(fig)  # Display each figure
+                        response_text = AI_response_fig[fig]
+                        st.markdown(response_text, unsafe_allow_html=True)
+                        ai_responses.append(response_text)
+                        plt.close(fig)
+
+                    if st.button("Generate PDF Report"):
+                        ai_responses = [AI_response_fig[fig] for fig in figures]
+                        pdf_filename = "/Users/charlierobinson/Documents/Code/DissertationCode/DissertationProject/reports/analysis_results.pdf"
+                        save_figures_to_pdf(figures, ai_responses, pdf_filename)
+                        with open(pdf_filename, "rb") as f:
+                            st.download_button("Download now", f, "analysis_results.pdf", "application/pdf")
 
             elif analysis_page == "Financial":
                 # Display financial analysis results
@@ -93,6 +106,7 @@ if st.session_state['show_visualizations']:
                                                         st.session_state.get('categorical_cols', []), 
                                                         st.session_state.get('financial_cols', []))
                 st.altair_chart(financial_chart, use_container_width=True)
+                download_chart(financial_chart, "financial_chart")
 
             elif analysis_page == "Categorical":
                 # Display categorical analysis results
@@ -103,6 +117,7 @@ if st.session_state['show_visualizations']:
                 categorical_chart = plot_categorical_barcharts(st.session_state['processed_data'],
                                                             st.session_state.get('categorical_cols', []))
                 st.altair_chart(categorical_chart, use_container_width=True)
+                download_chart(categorical_chart, "categorical_chart")
 
             elif analysis_page == "Time Series":
                 st.write('Time series analysis results:')
@@ -121,6 +136,7 @@ if st.session_state['show_visualizations']:
                     numerical_cols
                 )
                 st.altair_chart(time_series_chart, use_container_width=True)
+                download_chart(time_series_chart, "time_series_chart")
 
             elif analysis_page == "Anomalies":
                 # Display anomaly analysis results
@@ -131,7 +147,7 @@ if st.session_state['show_visualizations']:
                 checkdata = (st.session_state['processed_data'])
                 anomalies_chart = plot_distributions_altair(st.session_state['processed_data'], plot_type='boxplot')
                 st.altair_chart(anomalies_chart, use_container_width=True)
-
+                download_chart(anomalies_chart, "anomalies_chart")
 
 
     elif page == 'Explore Data':
@@ -143,44 +159,77 @@ if st.session_state['show_visualizations']:
 
         # 'processed_data' has the data to plot
         data = st.session_state['processed_data']
+
         
         # Only create charts if data is available
         if data is not None and selected_plot:
             column_options = data.columns.tolist()
-            
-            # Bar plot
+        
             if selected_plot == "Bar plot":
                 x_axis = st.sidebar.selectbox("Select category axis", column_options, key='x_axis')
                 y_axis = st.sidebar.selectbox("Select value axis", column_options, key='y_axis')
                 chart = alt.Chart(data).mark_bar().encode(
                     x=x_axis,
                     y=y_axis
+                ).properties(
+                    width=600,
+                    height=300,
+                    background='white',
+                    padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+                ).configure_view(
+                    stroke='transparent'
+                ).configure_axis(
+                    labelColor='black',
+                    titleColor='black',
+                    gridColor='black',
+                    domainColor='black',
+                    tickColor='black'
+                ).configure_title(
+                    color='black'
                 )
+                
                 chart = configure_chart(chart)
-                st.altair_chart(chart, use_container_width=True)  # This line displays the chart
+                st.altair_chart(chart, use_container_width=True) 
+                download_chart(chart, "bar_plot")
 
-            # Streamlit app code
             elif selected_plot == "Scatter plot":
                 x_axis = st.sidebar.selectbox("Select x-axis", column_options, key='x_axis_scatter')
                 y_axis = st.sidebar.selectbox("Select y-axis", column_options, key='y_axis_scatter')
-
-                # Checkbox for showing regression line
-                show_regression = st.sidebar.checkbox("Show Regression Line", value=True)
-
-                # Placeholder for the chart
-                chart_placeholder = st.empty()
-
-                # Depending on the checkbox, create the appropriate chart
-                if show_regression == True:
+                show_regression = st.sidebar.checkbox("Show Regression Line", value=False)
+                if show_regression:
                     chart = create_scatter_plot_with_line(data, x_axis, y_axis)
                 else:
                     chart = create_scatter_plot(data, x_axis, y_axis)
-
-                # Display the chart in the placeholder
                 chart = configure_chart(chart)
-                chart_placeholder.altair_chart(chart, use_container_width=True)
+                st.altair_chart(chart, use_container_width=True)
+                download_chart(chart, "scatter_plot")
 
-            # Box plot
+            elif selected_plot == "Histogram":
+                column = st.sidebar.selectbox("Select a column for histogram", column_options, key='hist_column')
+                bins = st.sidebar.slider("Number of bins", min_value=1, max_value=100, value=30, key='hist_bins')
+                chart = alt.Chart(data).mark_bar().encode(
+                    alt.X(column, bin=alt.Bin(maxbins=bins)),
+                    y='count()'
+                ).properties(
+                    width=600,
+                    height=300,
+                    background='white',
+                    padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+                ).configure_view(
+                    stroke='transparent'
+                ).configure_axis(
+                    labelColor='black',
+                    titleColor='black',
+                    gridColor='black',
+                    domainColor='black',
+                    tickColor='black'
+                ).configure_title(
+                    color='black'
+                )
+                chart = configure_chart(chart)
+                st.altair_chart(chart, use_container_width=True)
+                download_chart(chart, "histogram")
+
             elif selected_plot == "Box plot":
                 x_axis = st.sidebar.selectbox("Select category axis", column_options, key='x_axis_box')
                 y_axis = st.sidebar.selectbox("Select value axis", column_options, key='y_axis_box')
@@ -190,21 +239,28 @@ if st.session_state['show_visualizations']:
                     st.error(f"The selected value axis '{y_axis}' is not continuous.")
                 else:
                     chart = alt.Chart(data).mark_boxplot().encode(
-                        x=x_axis,
+                        x=x_axis, 
                         y=y_axis
-                    )
-                    chart = configure_chart(chart)
-                    st.altair_chart(chart, use_container_width=True) 
-            # Histogram 
-            elif selected_plot == "Histogram":
-                column = st.sidebar.selectbox("Select a column for histogram", column_options, key='hist_column')
-                bins = st.sidebar.slider("Number of bins", min_value=1, max_value=100, value=30, key='hist_bins')
-                chart = alt.Chart(data).mark_bar().encode(
-                    alt.X(column, bin=alt.Bin(maxbins=bins)),
-                    y='count()'
+                ).properties(
+                    width=600,
+                    height=300,
+                    background='white',
+                    padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+                ).configure_view(
+                    stroke='transparent'
+                ).configure_axis(
+                    labelColor='black',
+                    titleColor='black',
+                    gridColor='black',
+                    domainColor='black',
+                    tickColor='black'
+                ).configure_title(
+                    color='black'
                 )
-                chart = configure_chart(chart)
-                st.altair_chart(chart, use_container_width=True)
+                    st.altair_chart(chart, use_container_width=True)
+                    download_chart(chart, "box_plot")
+
+
 
             else:
                 st.warning("Please select at least one feature to include in the model.")
