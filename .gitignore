@@ -7,4 +7,6 @@ TestDBs/
 .env
 uploads
 reports
+.idea
+.lprof
 ```

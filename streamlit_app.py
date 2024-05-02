@@ -21,7 +21,7 @@ impute_missing_values = st.checkbox('Impute missing values', key='impute_missing
 
 
 # Process Data button
-if st.button('Process Data'):
+if st.button('Process Data', key='process_button'):
     if uploaded_file is not None:
         with st.spinner('Processing... Please wait'):
             # Processing and storing the results in session state
