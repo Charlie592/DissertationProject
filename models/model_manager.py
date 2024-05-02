@@ -35,7 +35,8 @@ def complete_analysis_pipeline(data, normalized_data):
     
     # Calculate silhouette score for each reduced data and find the best one
     for method, reduced_data in reduced_data_methods.items():
-        # Temporarily apply KMeans for silhouette score calculation; adjust based on your criteria or data
+        # Temporarily apply KMeans for silhouette score calculation; adjust based on your 
+        #criteria or data
         #trend_labels = KMeans(n_trends=5, random_state=42).fit_predict(reduced_data)
         trend_labels = optimal_kmeans(reduced_data)
         score = silhouette_score(reduced_data, trend_labels)
@@ -43,16 +44,13 @@ def complete_analysis_pipeline(data, normalized_data):
         #print(f"{method} silhouette score: {score}")
     
     best_method = max(silhouette_scores, key=silhouette_scores.get)
-    #print(f"Best dimensionality reduction method: {best_method} with a silhouette score of {silhouette_scores[best_method]}")
+    #print(f"Best dimensionality reduction method: {best_method} with a 
+    #silhouette score of {silhouette_scores[best_method]}")
     
     # Perform trending on the best reduced data
     best_reduced_data = reduced_data_methods[best_method]
     labels = choose_and_apply_trending(best_reduced_data)
     descriptions = generate_trend_descriptions(data, labels)
-    for description in descriptions:
-        continue
-        #print(description)
-        #print("---")
     AI_response={}
     AI_response = generate_summary(descriptions)
     print(AI_response)
@@ -61,29 +59,17 @@ def complete_analysis_pipeline(data, normalized_data):
     
 
 
-def generate_trend_descriptions(df, trend_labels, numeric_metric='var', diff_metric='mean'):
-    """
-    Generates descriptive summaries for each trend in the dataset.
-
-    Parameters:
-    - df: Pandas DataFrame containing the dataset.
-    - trend_labels: Array-like structure containing trend labels for each row in df.
-    - numeric_metric: The statistical metric to use for describing standout numeric fields ('var' for variance, 'std' for standard deviation, etc.).
-    - diff_metric: The metric to use for highlighting differences ('mean' or 'median').
-
-    Returns:
-    - all_descriptions: A list of descriptive summaries for each trend.
-    """
-    df['trend'] = trend_labels
-    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-    categorical_cols = df.select_dtypes(exclude=np.number).columns.tolist()
+def generate_trend_descriptions(data, trend_labels, numeric_metric='var', diff_metric='mean'):
+    data['trend'] = trend_labels
+    numeric_cols = data.select_dtypes(include=np.number).columns.tolist()
+    categorical_cols = data.select_dtypes(exclude=np.number).columns.tolist()
     numeric_cols.remove('trend')
 
     all_descriptions = []
 
     for trend_id in np.unique(trend_labels):
-        trend_data = df[df['trend'] == trend_id]
-        other_trends_data = df[df['trend'] != trend_id]
+        trend_data = data[data['trend'] == trend_id]
+        other_trends_data = data[data['trend'] != trend_id]
 
         # Section 1: Standout Fields
         standout_desc = f"trend {trend_id+1} standout fields are "
@@ -139,13 +125,6 @@ def generate_trend_descriptions(df, trend_labels, numeric_metric='var', diff_met
         all_descriptions.append(trend_description)
 
     return all_descriptions
-
-# Example usage
-# df = Your DataFrame
-# trend_labels = Your trend labels
-# descriptions = generate_trend_descriptions(df, trend_labels, 'var', 'mean')
-# print(descriptions)
-
 
 
 def choose_and_apply_trending(data):

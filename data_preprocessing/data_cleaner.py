@@ -48,11 +48,11 @@ def preprocess_data(data, handle_missing_values):
 
                 # Determine encoding strategy based on the number of unique values
                 unique_values = normalized_data[col].nunique()
-                if unique_values >= 5:
+                if unique_values <= 5:
                     # OneHot encode if unique values are 5 or less
                     encoded = one_hot_encoder.fit_transform(normalized_data[[col]])
-                    encoded_df = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
-                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_df], axis=1)
+                    encoded_data = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
+                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_data], axis=1)
                 else:
                     # Label encode if unique values are more than 5
                     normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
@@ -70,7 +70,7 @@ def detect_financial_columns(data):
         'revenue', 'cost', 'profit', 'expense', 'income', 'gross', 'salary',
         'dollar', 'dollars', 'euro', 'pound', 'pounds', 'sterling', 'yen',
         'rupee', 'ruble', 'real', 'peso', 'franc', 'lira', 'rand', 'krona',
-        'won', 'yuan', 'renminbi'
+        'won', 'yuan', 'renminbi', 'euros', 'pounds', 'dollars', 'rupees',
     ]
 
     financial_cols = []
@@ -156,7 +156,6 @@ def detect_time_date_columns(data):
         elif any(re.search(pattern, value) for pattern in date_formats.values() for value in sample_values):
             # Further processing for other date formats
             sample_dates = [value for value in sample_values if any(re.search(date_formats[fmt], value) for fmt in date_formats)]
-            
             if sample_dates:
                 # Infer the date format based on the first sample date
                 inferred_format = infer_date_format(sample_dates[0])

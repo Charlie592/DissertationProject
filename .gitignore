@@ -6,4 +6,5 @@ test.py
 TestDBs/
 .env
 uploads
+reports
 ```
