@@ -8,6 +8,8 @@ import seaborn as sns
 from scipy import stats
 from scipy.stats import zscore
 import warnings
+import streamlit as st
+import json
 
 # Suppress FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -141,15 +143,6 @@ def plot_categorical_barcharts(data, categorical_cols, N=20, min_count=3):
     return combined
 
 
-import altair as alt
-
-import altair as alt
-
-import altair as alt
-
-import altair as alt
-
-import altair as alt
 
 def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None, N=30):
     # Create a dictionary to store charts with their respective sum values
@@ -308,7 +301,7 @@ def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, ag
     return combined_chart
 
 # Usage example:
-# time_series_chart = plot_time_series_charts(df, ['time_column'], ['numerical_column_1', 'numerical_column_2'], aggregate='weekly')
+# time_series_chart = plot_time_series_charts(data, ['time_column'], ['numerical_column_1', 'numerical_column_2'], aggregate='weekly')
 
 
 def create_scatter_plot(data, x_col, y_col):
@@ -316,7 +309,20 @@ def create_scatter_plot(data, x_col, y_col):
         x=alt.X(x_col, title=x_col),
         y=alt.Y(y_col, title=y_col),
         tooltip=[x_col, y_col]
-    )
+        ).properties(
+            background='white',
+            view=alt.ViewConfig(stroke='transparent')
+        ).configure_axis(
+            labelColor='black',
+            titleColor='black',
+            gridColor='black',
+            domainColor='black',
+            tickColor='black'
+        ).configure_title(
+            color='black'
+        ).properties(
+            padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
+        )
 
 def create_scatter_plot_with_line(data, x_col, y_col):
     # Base chart for scatter points
@@ -335,7 +341,6 @@ def create_scatter_plot_with_line(data, x_col, y_col):
     final_chart = scatter_plot + regression_line
 
     return final_chart
-
 
 def visualize_feature_relationships(data, labels, AI_response, features=None, save_figures=False, figures_dir='figures'):
     figures = []  # A list to store the matplotlib figure objects or figure paths if saved
@@ -361,6 +366,9 @@ def visualize_feature_relationships(data, labels, AI_response, features=None, sa
         trend_data = data_with_trends[data_with_trends['trend'] == trend]
         if features:
             trend_data = trend_data[features + ['trend']]  # Select specified features and trend column
+
+
+        
 
         # Correlation heatmap
         heatmap_fig, ax = plt.subplots(figsize=(10, 8))
@@ -396,3 +404,75 @@ def configure_chart(chart):
     ).properties(
         padding={"left": 10, "right": 10, "top": 10, "bottom": 10}
     )
+
+
+import json
+import streamlit as st
+
+def download_chart(chart, filename):
+    # Apply the configuration to the chart
+    configured_chart = configure_chart(chart)
+
+    # Convert the configured chart to a JSON specification
+    chart_spec = json.loads(configured_chart.to_json())
+
+    # HTML template including Vega, Vega-Lite, and Vega-Embed with explicit configuration
+    html_template = f"""
+    <html>
+    <head>
+      <!-- Import Vega, Vega-Lite, Vega-Embed -->
+      <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    </head>
+    <body>
+      <div id="vis"></div>
+      <script type="text/javascript">
+        var spec = {json.dumps(chart_spec)};
+        var opt = {{"renderer": "canvas", "actions": true}};
+        vegaEmbed('#vis', spec, opt).then(function (result) {{
+          console.log(result);
+        }}).catch(console.error);
+      </script>
+    </body>
+    </html>
+    """
+
+    # Create a download button for the HTML in Streamlit
+    st.download_button(
+        label="Download chart as HTML",
+        data=html_template,
+        file_name=f"{filename}.html",
+        mime='text/html'
+    )
+
+
+import pandas as pd
+import streamlit as st
+from matplotlib import pyplot as plt
+from fpdf import FPDF
+import os
+
+from bs4 import BeautifulSoup
+
+def strip_html_tags(text):
+    return BeautifulSoup(text, "html.parser").get_text()
+
+# Update your function for saving figures and text to PDF
+def save_figures_to_pdf(figures, ai_responses, filename="/Users/charlierobinson/Documents/Code/DissertationCode/DissertationProject/reports/analysis_results.pdf"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    for index, (fig, response) in enumerate(zip(figures, ai_responses)):
+        img_path = f"/Users/charlierobinson/Documents/Code/DissertationCode/DissertationProject/reports/temp_img_{index}.png"  # Unique path for each figure
+        fig.savefig(img_path)  # Save current figure
+        plt.close(fig)  # Close the figure to free memory after saving
+
+        pdf.image(img_path, x=10, y=None, w=180)  # Add image to PDF at specified location
+        
+        clean_text = strip_html_tags(response)  # Strip HTML tags if response contains HTML
+        pdf.ln(10)  # Add a line break
+        pdf.multi_cell(0, 10, clean_text)  # Add text below the image
+    
+    pdf.output(filename)  # Save the PDF to a file
