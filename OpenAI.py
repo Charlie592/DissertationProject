@@ -27,7 +27,7 @@ def generate_summary(descriptions, retry_lmit=3):
         ],
     )
 
-    print(response.choices[0].message.content)
+    #print(response.choices[0].message.content)
 
     try:
         data = json.loads(response.choices[0].message.content)
