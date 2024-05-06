@@ -192,8 +192,8 @@ def plot_financial_barcharts(data, categorical_cols, financial_cols, title=None,
     # Sort charts by their total sum in descending order
     sorted_charts = [chart for _, chart in sorted(charts_with_sums.values(), key=lambda x: x[0], reverse=True)]
 
-    # Group the sorted charts into rows of three
-    rows_of_charts = [sorted_charts[i:i + 3] for i in range(0, len(sorted_charts), 3)]
+    # Group the sorted charts into rows of two
+    rows_of_charts = [sorted_charts[i:i + 2] for i in range(0, len(sorted_charts), 2)]
 
     # Concatenate all the rows of charts
     vconcat_charts = alt.VConcatChart(vconcat=[
@@ -232,7 +232,7 @@ import altair as alt
 import pandas as pd
 import altair as alt
 
-def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, aggregate='daily'):
+def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None):
     if not isinstance(data, pd.DataFrame):
         raise ValueError("Data must be a pandas DataFrame")
     
@@ -240,24 +240,26 @@ def plot_time_series_charts(data, time_date_cols, numerical_cols, title=None, ag
     charts = []
     
     for time_col in time_date_cols:
+        print ("data[time_col]", data[time_col])
         # Convert the time column to datetime if not already and drop NaT values
         data[time_col] = pd.to_datetime(data[time_col], errors='coerce')
+        print ("dpost pd data[time_col]", data[time_col])
         valid_data = data.dropna(subset=[time_col]).copy()  # Copy to avoid SettingWithCopyWarning
 
         # Set the index to the time_col for resampling
         valid_data.set_index(time_col, inplace=True)
         valid_data.sort_index(inplace=True)
 
-        # Resample if aggregation is specified
-        if aggregate:
-            if aggregate == 'daily':
-                valid_data = valid_data.resample('D').mean().reset_index()
-            elif aggregate == 'weekly':
-                valid_data = valid_data.resample('W').mean().reset_index()
-            elif aggregate == 'monthly':
-                valid_data = valid_data.resample('M').mean().reset_index()
-            # More resampling options can be added as needed
-
+        aggregate = detect_aggregation_level(valid_data, time_col)
+        print("Aggregate: ", aggregate)
+        if aggregate == 'daily':
+            valid_data = valid_data.resample('D').mean().reset_index()
+        elif aggregate == 'weekly':
+            valid_data = valid_data.resample('W').mean().reset_index()
+        elif aggregate == 'monthly':
+            valid_data = valid_data.resample('M').mean().reset_index()
+        elif aggregate == 'yearly':
+            valid_data = valid_data.resample('A').mean().reset_index()
         # Create line charts for each numerical column
         for num_col in numerical_cols:
             if pd.api.types.is_numeric_dtype(valid_data[num_col]):
@@ -345,9 +347,11 @@ def create_scatter_plot_with_line(data, x_col, y_col):
 def visualize_feature_relationships(data, labels, AI_response, features=None, save_figures=False, figures_dir='figures'):
     figures = []  # A list to store the matplotlib figure objects or figure paths if saved
     data_with_trends = data.copy()  # Create a copy of the data
+    data_with_trends = data_with_trends.select_dtypes(include=[np.number])  # This selects only numeric columns
     data_with_trends['trend'] = labels  # Add the trend column to the copied data
 
-    # Example: Calculate the mean for numerical features for each trend
+    
+   # Example: Calculate the mean for numerical features for each trend
     trend_characteristics = data_with_trends.groupby('trend').mean()
 
     # Identifying top distinguishing features for one trend as an example
@@ -476,3 +480,21 @@ def save_figures_to_pdf(figures, ai_responses, filename="/Users/charlierobinson/
         pdf.multi_cell(0, 10, clean_text)  # Add text below the image
     
     pdf.output(filename)  # Save the PDF to a file
+
+
+def detect_aggregation_level(valid_data, time_col):
+    # Make sure to work with a DataFrame where time_col is a column
+    if time_col not in valid_data.columns:
+        valid_data = valid_data.reset_index()  # Reset index if time_col is not found
+    # Calculate the difference between consecutive dates
+    date_diffs = valid_data[time_col].diff().dt.days.abs()
+    
+    # Define thresholds for daily, weekly, monthly, yearly continuity
+    if date_diffs.max() <= 1:
+        return 'daily'
+    elif date_diffs.max() <= 7:
+        return 'weekly'
+    elif date_diffs.max() <= 31:
+        return 'monthly'
+    else:
+        return 'yearly'

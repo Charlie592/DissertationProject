@@ -14,14 +14,14 @@ if 'show_visualizations' not in st.session_state:
 
 # Main page layout
 st.subheader('AI-driven Data Visualization: Revolutionizing Data Analysis through Automation')
-uploaded_file = st.file_uploader('Upload your dataset', type=['csv', 'xlsx', 'json', 'txt'], help='Upload a dataset in CSV, XLSX, JSON, or TXT format to begin the analysis process. The uploaded dataset will be processed to generate visualizations and insights that aid in understanding the data dynamics.')
-impute_missing_values = st.checkbox('Impute missing values', key='impute_missing_key', help='Impute missing values by replacing them with the mean, median, or mode of the respective column. This step ensures that the dataset is complete and ready for analysis. Missing values can skew the results and hinder the accuracy of the analysis. By imputing these values, we ensure that the dataset is robust and reliable for further processing.')
-
-
-
+uploaded_file = st.file_uploader('Upload your dataset', type=['csv', 'xlsx', 'json', 'txt'], help="""Upload a dataset in CSV, XLSX, JSON, or TXT format to begin the analysis process. 
+                                 The uploaded dataset will be processed to generate visualizations and insights that aid in understanding the data dynamics.""")
+impute_missing_values = st.checkbox('Impute missing values', key='impute_missing_key', help="""Impute missing values by replacing them with the mean, median, or mode of the respective column. 
+                                    This step ensures that the dataset is complete and ready for analysis. Missing values can skew the results and hinder the accuracy of the analysis. 
+                                    By imputing these values, we ensure that the dataset is robust and reliable for further processing.""")
 
 # Process Data button
-if st.button('Process Data', key='process_button'):
+if st.button('Process Data'):
     if uploaded_file is not None:
         with st.spinner('Processing... Please wait'):
             # Processing and storing the results in session state
@@ -29,7 +29,7 @@ if st.button('Process Data', key='process_button'):
                 st.session_state['processed_data'], 
                 st.session_state['normalized_data'], 
                 st.session_state['labels'],
-                financial_cols,  # This should be stored in the session state if you want to preserve it across reruns
+                financial_cols,  
                 categorical_cols,
                 time_date_cols,
                 st.session_state['AI_response']
@@ -71,16 +71,17 @@ if st.session_state['show_visualizations']:
             if analysis_page == "General Analysis":
                 # Display general analysis results
                 st.write('General analysis results:')
-                st.caption('The general analysis section provides an overview of the dataset, highlighting key statistics and distributions. By identifying the numerical columns within the dataset, this section generates histograms and box plots to visualize the data distribution. These visualizations offer insights into the central tendency, spread, and skewness of the data, enabling a deeper understanding of the dataset characteristics. Whether examining revenue figures, customer counts, or any other numerical data, this section provides a comprehensive overview of the dataset dynamics.\n\n')
+                st.caption("""Explore the foundational overview of your dataset in the General Analysis section. 
+                           Here, we highlight key statistics and distribution patterns through sophisticated visualizations like correlation heatmaps. 
+                           Discover trends, understand data characteristics, and gain actionable insights with AI-enhanced summaries tailored to highlight the most relevant data points.\n\n""")
                 st.write("<br>", unsafe_allow_html=True)
 
                 # Code for displaying general analysis results goes here - Taken out to save tokens
 
                 if 'processed_data' in st.session_state:
-                    processed_data_data = pd.DataFrame(st.session_state['processed_data'])
-                    labels = st.session_state['labels']
-                    
-                    figures, AI_response_fig = visualize_feature_relationships(processed_data_data, labels, st.session_state['AI_response'])
+                    processed_data_df = pd.DataFrame(st.session_state['processed_data'])
+                    labels = st.session_state['labels']  # Ensure labels are also correctly retrieved or generated
+                    figures, AI_response_fig = visualize_feature_relationships(processed_data_df, labels, st.session_state['AI_response'])
                     ai_responses = []
                     for fig in figures:
                         st.pyplot(fig)  # Display each figure
@@ -99,29 +100,43 @@ if st.session_state['show_visualizations']:
             elif analysis_page == "Financial":
                 # Display financial analysis results
                 st.write('Financial analysis results:')
-                st.caption('This section is dedicated to showcasing the financial aspects of the dataset. By recognizing all financial-related columns, it presents an in-depth analysis through bar charts that pair these financial metrics with categorical columns. This method of visualization not only simplifies the comparison across different categories but also provides a clear perspective on financial trends and distributions within the dataset. Whether its revenue, expenses, or any other financial parameter, this section brings critical financial insights to the forefront.\n\n')
+                st.caption("""This section is dedicated to showcasing the financial aspects of the dataset. By recognizing all financial-related columns, 
+                           it presents an in-depth analysis through bar charts that pair these financial metrics with categorical columns. 
+                           This method of visualization not only simplifies the comparison across different categories but also provides a clear perspective on financial trends and distributions within the dataset. 
+                           Whether its revenue, expenses, or any other financial parameter, this section brings critical financial insights to the forefront.\n\n""")
                 st.write("<br>", unsafe_allow_html=True)
                 # Generate the financial chart using the stored DataFrame and column information
                 financial_chart = plot_financial_barcharts(st.session_state['processed_data'], 
                                                         st.session_state.get('categorical_cols', []), 
                                                         st.session_state.get('financial_cols', []))
+                financial_chart = financial_chart.properties(
+                    autosize={'type': 'fit', 'contains': 'padding'}) 
                 st.altair_chart(financial_chart, use_container_width=True)
                 download_chart(financial_chart, "financial_chart")
 
             elif analysis_page == "Categorical":
                 # Display categorical analysis results
                 st.write('Categorical analysis results:')
-                st.caption('In the categorical section, our focus shifts to the qualitative aspects of the dataset. Here, all categorical columns are identified and displayed alongside numerical columns in intuitive bar charts. This visualization technique allows for an easy comparison of numerical values across different categories, offering insights into patterns, frequencies, and distributions that might not be immediately evident. Whether analyzing demographic information, product categories, or any other non-numeric data, this section provides a comprehensive overview of categorical data dynamics.\n\n')
+                st.caption("""In the categorical section, our focus shifts to the qualitative aspects of the dataset. 
+                           Here, all categorical columns are identified and displayed alongside numerical columns in intuitive bar charts. 
+                           This visualization technique allows for an easy comparison of numerical values across different categories, offering insights into patterns, frequencies, 
+                           and distributions that might not be immediately evident. Whether analyzing demographic information, product categories, or any other non-numeric data, 
+                           this section provides a comprehensive overview of categorical data dynamics.\n\n""")
                 st.write("<br>", unsafe_allow_html=True)
                 # Generate the categorical chart using the stored DataFrame and column information
                 categorical_chart = plot_categorical_barcharts(st.session_state['processed_data'],
                                                             st.session_state.get('categorical_cols', []))
+                categorical_chart = categorical_chart.properties(
+                    autosize={'type': 'fit', 'contains': 'padding'})
                 st.altair_chart(categorical_chart, use_container_width=True)
                 download_chart(categorical_chart, "categorical_chart")
 
             elif analysis_page == "Time Series":
                 st.write('Time series analysis results:')
-                st.caption('When the dataset includes time or date columns, this section comes into play by offering time series graphs. These visualizations track changes and trends over time, providing a temporal dimension to the data analysis. Time/date charts are invaluable for identifying patterns, seasonal variations, fluctuations, and long-term trends. Whether youre examining sales over the months, website traffic across days, or any time-sensitive data, this section reveals the temporal relationships and dynamics at play.\n\n')
+                st.caption("""When the dataset includes time or date columns, this section comes into play by offering time series graphs. 
+                           These visualizations track changes and trends over time, providing a temporal dimension to the data analysis. 
+                           Time/date charts are invaluable for identifying patterns, seasonal variations, fluctuations, and long-term trends. 
+                           Whether youre examining sales over the months, website traffic across days, or any time-sensitive data, this section reveals the temporal relationships and dynamics at play.\n\n""")
                 st.write("<br>", unsafe_allow_html=True)
                 processed_data = st.session_state['processed_data']
                 
@@ -135,13 +150,18 @@ if st.session_state['show_visualizations']:
                     st.session_state.get('time_date_cols', []),
                     numerical_cols
                 )
+                time_series_chart = time_series_chart.properties(
+                    autosize={'type': 'fit', 'contains': 'padding'}) 
                 st.altair_chart(time_series_chart, use_container_width=True)
                 download_chart(time_series_chart, "time_series_chart")
 
             elif analysis_page == "Anomalies":
                 # Display anomaly analysis results
                 st.write('Anomaly analysis results:')
-                st.caption('In this section, we delve into the identification of anomalies within the dataset through the use of histograms. Each histogram highlights data distribution for specific variables, with a keen focus on the upper and lower quartiles. Anomalies, or outliers, are visually demarcated, drawing attention to data points that deviate significantly from the norm. This visualization aids in understanding the variability within the data and pinpointing irregularities that may warrant further investigation.\n\n')
+                st.caption("""In this section, we delve into the identification of anomalies within the dataset through the use of histograms. 
+                           Each histogram highlights data distribution for specific variables, with a keen focus on the upper and lower quartiles. 
+                           Anomalies, or outliers, are visually demarcated, drawing attention to data points that deviate significantly from the norm. 
+                           This visualization aids in understanding the variability within the data and pinpointing irregularities that may warrant further investigation.\n\n""")
                 st.write("<br>", unsafe_allow_html=True)
                 # Code for displaying anomaly analysis results goes here
                 checkdata = (st.session_state['processed_data'])
@@ -236,7 +256,7 @@ if st.session_state['show_visualizations']:
 
                 # Ensure the y-axis is treated as a quantitative variable
                 if data[y_axis].dtype not in ['float64', 'int64']:
-                    st.error(f"The selected value axis '{y_axis}' is not continuous.")
+                    st.warning(f"The selected value axis '{y_axis}' is not continuous.")
                 else:
                     chart = alt.Chart(data).mark_boxplot().encode(
                         x=x_axis, 

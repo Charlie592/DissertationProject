@@ -21,21 +21,19 @@ def preprocess_data(data, handle_missing_values):
     data = converted_data
     print("Time/Date columns:", time_date_cols)
     print(data.dtypes)
-    print(data.head(10))
+    print("Preprocessed Data Test: \n", data.head(10))
     print(converted_to_normalize.dtypes)
     categorical_cols = data.select_dtypes(include=['object']).columns
-    #print("Categorical columns:", categorical_cols)
 
     normalized_data = converted_to_normalize.copy()
-    print("Normalized data:\n", normalized_data.head(10))
-
+    print("Normalized data test:\n", normalized_data.head(10))
+    
     if handle_missing_values == False:
         print("Dropping rows with missing values.")
         num_rows_dropped = len(data) - len(data.dropna())
         data.dropna(inplace=True)
         normalized_data.dropna(inplace=True)
         print(f"Dropped {num_rows_dropped} rows with missing values.")
-
    
         # Initialize encoders 
         one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
@@ -51,17 +49,18 @@ def preprocess_data(data, handle_missing_values):
                 if unique_values <= 5:
                     # OneHot encode if unique values are 5 or less
                     encoded = one_hot_encoder.fit_transform(normalized_data[[col]])
-                    encoded_data = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
-                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_data], axis=1)
+                    encoded_df = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
+                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_df], axis=1)
                 else:
                     # Label encode if unique values are more than 5
                     normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
                 
-                
+            
 
     else:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
         normalized_data = normalize_data(normalized_data)
+        print (normalized_data)
     
     return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
@@ -174,7 +173,7 @@ def detect_time_date_columns(data):
             data2norm[f'{col}_time'] = data[col].apply(parse_time2norm)
             # Mark column as processed
             processed_as_date_or_time = True
-            time_date_cols.append(f'{col}_time')
+            #time_date_cols.append(f'{col}_time')
         
         # If the column was processed as date or time, drop the original column
         if processed_as_date_or_time:

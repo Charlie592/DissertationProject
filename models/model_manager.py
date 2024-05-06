@@ -53,7 +53,7 @@ def complete_analysis_pipeline(data, normalized_data):
     descriptions = generate_trend_descriptions(data, labels)
     AI_response={}
     AI_response = generate_summary(descriptions)
-    print(AI_response)
+    print(normalized_data)
 
     return labels, AI_response
     
