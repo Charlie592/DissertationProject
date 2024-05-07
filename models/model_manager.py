@@ -53,7 +53,7 @@ def complete_analysis_pipeline(data, normalized_data):
     descriptions = generate_trend_descriptions(data, labels)
     AI_response={}
     AI_response = generate_summary(descriptions)
-    print(normalized_data)
+    #print(normalized_data)
 
     return labels, AI_response
     
@@ -123,6 +123,7 @@ def generate_trend_descriptions(data, trend_labels, numeric_metric='var', diff_m
         # Combine both sections for the trend's description
         trend_description = standout_desc + diff_desc
         all_descriptions.append(trend_description)
+        print("\n\nAll descriptions: ", all_descriptions)
 
     return all_descriptions
 
@@ -130,10 +131,10 @@ def generate_trend_descriptions(data, trend_labels, numeric_metric='var', diff_m
 def choose_and_apply_trending(data):
     # Example simplistic criteria: Dataset size
     if len(data) < 1:  # Assuming larger datasets might have more complex trend shapes
-        print("Using DBSCAN...")
+        #print("Using DBSCAN...")
         labels = optimal_dbscan(data)
     else:
-        print("Using KMeans...")
+        #print("Using KMeans...")
         labels = optimal_kmeans(data)
     
     return labels

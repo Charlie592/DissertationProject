@@ -18,7 +18,7 @@ def optimal_kmeans(data, max_clusters=5):
     # Automatically find the elbow point, limited to the range [1, max_trends]
     kn = KneeLocator(range(1, max_clusters + 1), wcss, curve='convex', direction='decreasing')
     n_clusters_optimal = kn.knee
-    print(f"Optimal number of trends: {n_clusters_optimal}")
+    #print(f"Optimal number of trends: {n_clusters_optimal}")
 
     return apply_kmeans(data, n_clusters=n_clusters_optimal)
 
@@ -41,7 +41,7 @@ def optimal_dbscan(data):
     # Automatically find the knee point as the optimal eps value
     kn = KneeLocator(np.arange(len(distances)), distances, curve='convex', direction='increasing')
     eps_optimal = distances[kn.knee]
-    print(f"Optimal eps value: {eps_optimal}")
+    #print(f"Optimal eps value: {eps_optimal}")
     
     return apply_dbscan(data, eps=eps_optimal, min_samples=9)
 

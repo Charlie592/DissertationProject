@@ -19,48 +19,47 @@ def preprocess_data(data, handle_missing_values):
     financial_cols = detect_financial_columns(data)
     time_date_cols, converted_data, converted_to_normalize = detect_time_date_columns(data)
     data = converted_data
-    print("Time/Date columns:", time_date_cols)
-    print(data.dtypes)
-    print("Preprocessed Data Test: \n", data.head(10))
-    print(converted_to_normalize.dtypes)
+    #print("Time/Date columns:", time_date_cols)
+    #print(data.dtypes)
+    #print("Preprocessed Data Test: \n", data.head(10))
+    #print(converted_to_normalize.dtypes)
     categorical_cols = data.select_dtypes(include=['object']).columns
 
     normalized_data = converted_to_normalize.copy()
-    print("Normalized data test:\n", normalized_data.head(10))
+    print("Normalized data test:\n\n", normalized_data.head(10),"\n\n")
     
     if handle_missing_values == False:
-        print("Dropping rows with missing values.")
+        #print("Dropping rows with missing values.")
         num_rows_dropped = len(data) - len(data.dropna())
         data.dropna(inplace=True)
         normalized_data.dropna(inplace=True)
-        print(f"Dropped {num_rows_dropped} rows with missing values.")
-   
-        # Initialize encoders 
-        one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-        label_encoder = LabelEncoder()
+        #print(f"Dropped {num_rows_dropped} rows with missing values.")
 
-        for col in normalized_data.columns:
-            if normalized_data[col].dtype == 'object':
-                # Fill NaN values in categorical columns with a placeholder
-                normalized_data[col].fillna('missing', inplace=True)
+    
+    # Initialize encoders 
+    one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+    label_encoder = LabelEncoder()
 
-                # Determine encoding strategy based on the number of unique values
-                unique_values = normalized_data[col].nunique()
-                if unique_values <= 5:
-                    # OneHot encode if unique values are 5 or less
-                    encoded = one_hot_encoder.fit_transform(normalized_data[[col]])
-                    encoded_df = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
-                    normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_df], axis=1)
-                else:
-                    # Label encode if unique values are more than 5
-                    normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
-                
-            
+    for col in normalized_data.columns:
+        if normalized_data[col].dtype == 'object':
+            # Fill NaN values in categorical columns with a placeholder
+            #normalized_data[col].fillna('missing', inplace=True)
 
-    else:
+            # Determine encoding strategy based on the number of unique values
+            unique_values = normalized_data[col].nunique()
+            if unique_values <= 5:
+                # OneHot encode if unique values are 5 or less
+                encoded = one_hot_encoder.fit_transform(normalized_data[[col]])
+                encoded_df = pd.DataFrame(encoded, columns=one_hot_encoder.get_feature_names_out([col]), index=normalized_data.index)
+                normalized_data = pd.concat([normalized_data.drop(columns=[col]), encoded_df], axis=1)
+            else:
+                # Label encode if unique values are more than 5
+                normalized_data[col] = label_encoder.fit_transform(normalized_data[col])
+
+    if handle_missing_values != False:
         normalized_data = handle_missing_values_with_tpot(normalized_data)
-        normalized_data = normalize_data(normalized_data)
-        print (normalized_data)
+   
+    normalized_data = normalize_data(normalized_data)
     
     return data, normalized_data, financial_cols, categorical_cols, time_date_cols
 
@@ -219,8 +218,8 @@ def drop_id_columns(data):
             #id_columns.append(col)
 
     # Print information about the columns and ID columns
-    print(f"Columns: {data.columns}")
-    print(f"Dropping ID columns: {id_columns}")
+    #print(f"Columns: {data.columns}")
+    #print(f"Dropping ID columns: {id_columns}")
 
     # Drop the ID columns from the DataFrame, ignoring errors
     data_no_id = data.drop(columns=id_columns, errors='ignore')
@@ -238,20 +237,20 @@ def predictive_imputation(data, column_to_impute):
     
     # Check if the target column for imputation was dropped or is empty
     if column_to_impute not in data.columns:
-        print(f"Column '{column_to_impute}' was empty and has been dropped.")
+        #print(f"Column '{column_to_impute}' was empty and has been dropped.")
         return data
     
     missing_before = data[column_to_impute].isnull().sum()
     if missing_before == 0:
-        print(f"No missing values in '{column_to_impute}'. No imputation needed.")
+        #print(f"No missing values in '{column_to_impute}'. No imputation needed.")
         return data
     
     if pd.api.types.is_numeric_dtype(data[column_to_impute]):
         tpot_model = TPOTRegressor(max_time_mins=30, generations=3, population_size=50, verbosity=2, random_state=42)
-        print(f"Using TPOTRegressor for numeric column: {column_to_impute}")
+        #print(f"Using TPOTRegressor for numeric column: {column_to_impute}")
     else:
         tpot_model = TPOTClassifier(max_time_mins=30, generations=5, population_size=50, verbosity=2, random_state=42)
-        print(f"Using TPOTClassifier for categorical column: {column_to_impute}")
+        #print(f"Using TPOTClassifier for categorical column: {column_to_impute}")
 
     # Splitting the data into training and testing sets based on null values in the column to impute
     train_data = data.dropna(subset=[column_to_impute])
@@ -266,7 +265,7 @@ def predictive_imputation(data, column_to_impute):
     data.loc[data[column_to_impute].isnull(), column_to_impute] = predicted_values
     missing_after = data[column_to_impute].isnull().sum()
 
-    print(f"Imputed missing values in '{column_to_impute}'. Missing before: {missing_before}, Missing after: {missing_after}")
+    #print(f"Imputed missing values in '{column_to_impute}'. Missing before: {missing_before}, Missing after: {missing_after}")
     return data
 
 
